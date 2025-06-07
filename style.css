@@ -1,0 +1,341 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #FFFFFF; /* ボディ背景は完全に白 */
+}
+
+header {
+    background-color: #2c3e50; /* ヘッダーの色はそのまま */
+    color: #ecf0f1;
+    padding: 10px 0;
+    text-align: center;
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+nav ul li {
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin: 0 5px;
+}
+
+nav ul li:hover,
+nav ul li.active {
+    background-color: #34495e;
+}
+
+/* 新規登録ボタンのスタイル */
+#new-manual-button {
+    background-color: #ffc107;
+    color: #333;
+    font-weight: bold;
+    border-radius: 5px;
+    padding: 10px 25px;
+    margin-left: 20px;
+}
+
+#new-manual-button:hover {
+    background-color: #e0a800;
+    color: #fff;
+}
+
+
+/* 検索エリア */
+#search-area {
+    margin: 20px auto;
+    max-width: 960px; /* 変更: 元の幅に戻す */
+    padding: 15px;
+    border: 1px solid #DEDEDE; /* 枠線色を一般的なグレーに */
+    border-radius: 8px;
+    background-color: #FFFFFF; /* 検索窓の背景は白 */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    box-sizing: border-box;
+}
+
+#search-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #CCCCCC; /* 入力欄の枠線色を一般的なグレーに */
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+main {
+    padding: 10px 20px; /* 変更: 上下パディングを短く */
+    max-width: 960px; /* 変更: 元の幅に戻す */
+    margin: 20px auto;
+    background-color: #F0F0F0; /* メインコンテンツの背景をライトグレーに */
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+/* コンテンツ一覧 */
+#content-list ul {
+    list-style: none;
+    padding: 0;
+    display: flex; /* Flexboxにして */
+    flex-direction: column; /* 縦並びにする */
+    gap: 10px; /* リスト項目間の余白 */
+}
+
+#content-list li {
+    padding: 8px 12px; /* 変更: 上下左右のパディングを短く */
+    border: 1px solid #E0E0E0; /* リストの枠線を標準的なグレーに */
+    border-radius: 8px; /* 角を丸くする */
+    background-color: #FFFFFF; /* リスト項目自体は白背景 */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease; /* ホバー効果追加 */
+}
+
+
+#content-list li:hover {
+    background-color: #FCFCFC; /* ホバー時の色を調整 */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05); /* ホバー時に軽い影を追加 */
+}
+
+#content-list .manual-info {
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    flex-grow: 1;
+}
+
+#content-list .manual-title-item {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333333;
+}
+
+/* 新規追加: ラダー表示のスタイル */
+#content-list .manual-ladder-display {
+    font-size: 0.75em; /* 小さめのフォントサイズ */
+    color: #777777; /* 少し薄めの色 */
+    margin-top: 2px; /* タイトルからの少しの余白 */
+}
+
+/* #content-list .manual-ladder-item はJSで直接inner HTMLに書いていたため、ここでは不要 */
+/* display: none; の定義も不要 */
+
+.sort-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-left: 15px;
+}
+
+.sort-button {
+    background-color: #F7F2EF; /* 並べ替えボタンの背景をライトベージュに */
+    border: 1px solid #C9C1BB; /* 枠線を少し濃いベージュグレーに */
+    padding: 5px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8em;
+    color: #666666; /* テキスト色 */
+    transition: background-color 0.2s ease;
+}
+
+.sort-button:hover {
+    background-color: #DED8D4; /* ホバー時の色を強調 */
+}
+
+.sort-button:active {
+    background-color: #D0C4BD; /* クリック時の色を調整 */
+}
+
+/* コンテンツ詳細 */
+#content-detail {
+    padding: 20px;
+    border: 1px solid #DEDEDE; /* 詳細エリアの枠線色を一般的なグレーに */
+    border-radius: 5px;
+    background-color: #FFFFFF; /* 詳細エリアの背景も白 */
+}
+
+#detail-title {
+    color: #333333;
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+#detail-body {
+    line-height: 1.7;
+    white-space: pre-wrap;
+    color: #333333;
+}
+
+.detail-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+#edit-button,
+#delete-button,
+#back-to-list-button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+#edit-button {
+    background-color: #28A745; /* Green */
+    color: white;
+}
+#edit-button:hover {
+    background-color: #218838;
+}
+
+#delete-button {
+    background-color: #DC3545; /* Red */
+    color: white;
+}
+#delete-button:hover {
+    background-color: #C82333;
+}
+
+#back-to-list-button {
+    background-color: #6C757D; /* Gray */
+    color: white;
+    margin-top: 15px;
+    display: block;
+}
+#back-to-list-button:hover {
+    background-color: #5A6268;
+}
+
+/* フォームエリア */
+#manual-form-area {
+    padding: 20px;
+    border: 1px solid #DEDEDE; /* フォームエリアの枠線色を一般的なグレーに */
+    border-radius: 8px;
+    background-color: #FFFFFF; /* フォームエリアの背景も白 */
+}
+
+#manual-form-area h2 {
+    color: #333333;
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+#manual-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555555;
+}
+
+#manual-form input[type="text"],
+#manual-form textarea,
+#manual-form select {
+    width: calc(100% - 20px);
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #CCCCCC; /* 入力欄の枠線色を一般的なグレーに */
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+#manual-form textarea {
+    resize: vertical;
+}
+
+#manual-form button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    margin-right: 10px;
+}
+
+#save-manual-button {
+    background-color: #007BFF;
+    color: white;
+}
+#save-manual-button:hover {
+    background-color: #0056B3;
+}
+
+#cancel-form-button {
+    background-color: #6C757D;
+    color: white;
+}
+#cancel-form-button:hover {
+    background-color: #5A6268;
+}
+
+.hidden {
+    display: none;
+}
+
+/* フッターのスタイル */
+hr {
+    border: none;
+    border-top: 1px solid #e0e0e0; /* 薄いグレーの区切り線 */
+    margin: 40px auto 20px auto; /* 上部の余白を確保し、フッターとの距離を調整 */
+    max-width: 960px; /* mainの幅に合わせる */
+}
+
+footer {
+    background-color: #2c3e50; /* ヘッダーと同じ背景色 */
+    color: #ecf0f1; /* ヘッダーと同じテキスト色 */
+    padding: 20px 0;
+    text-align: center;
+    font-size: 0.9em;
+    margin-top: 20px; /* メインコンテンツとフッターの間の余白 */
+}
+
+footer p {
+    margin: 0;
+}
+/* ★ここから追加★ Google Drive連携ボタンのスタイル */
+#google-drive-actions {
+    text-align: center;
+    margin: 20px auto 10px auto;
+    max-width: 960px;
+    padding: 15px;
+    border: 1px solid #DEDEDE;
+    border-radius: 8px;
+    background-color: #F8F8F8;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+}
+
+#google-drive-actions button {
+    background-color: #4285F4; /* Google Blue */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease;
+}
+
+#google-drive-actions button:hover {
+    background-color: #357ae8;
+}
+
+#google-drive-actions button:disabled {
+    background-color: #A0A0A0; /* 無効化されたボタンの色 */
+    cursor: not-allowed;
+}
+
+#file-status {
+    font-size: 0.8em;
+    color: #666;
+    margin-top: 10px;
+}
+/* ★ここまで追加★ */

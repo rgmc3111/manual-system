@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>マニュアル登録システム</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <ul>
+                <li class="nav-item active" data-ladder="all">すべて</li>
+                <li class="nav-item" data-ladder="ladder1">ラダー1</li>
+                <li class="nav-item" data-ladder="ladder2">ラダー2</li>
+                <li class="nav-item" data-ladder="ladder3">ラダー3</li>
+                <li class="nav-item" data-ladder="ladder4">ラダー4</li>
+                <li class="nav-item" data-ladder="ladder5">ラダー5</li>
+                <li class="nav-item" id="new-manual-button">新規登録</li>
+            </ul>
+        </nav>
+    </header>
+
+    <div id="search-area">
+        <input type="text" id="search-input" placeholder="キーワードで検索...">
+        <button id="load-from-drive-button" disabled>マニュアルを読み込む (Drive)</button>
+        <button id="save-to-drive-button" disabled>マニュアルを保存 (Drive)</button>
+        <div id="file-status">Google Driveに接続していません。</div>
+    </div>
+
+    <main>
+        <div id="main-content">
+            <div id="content-list">
+                </div>
+            <div id="content-detail" class="hidden">
+                <h2 id="detail-title"></h2>
+                <p id="detail-body"></p>
+                <div class="detail-actions">
+                    <button id="edit-button">編集</button>
+                    <button id="delete-button">削除</button>
+                </div>
+                <button id="back-to-list-button">一覧に戻る</button>
+            </div>
+        </div>
+
+        <div id="manual-form-area" class="hidden">
+            <h2><span id="form-title">新規登録</span></h2>
+            <form id="manual-form">
+                <input type="hidden" id="manual-id">
+                <label for="manual-title">タイトル:</label>
+                <input type="text" id="manual-title" required>
+
+                <label for="manual-body">本文:</label>
+                <textarea id="manual-body" rows="10" required></textarea>
+
+                <label for="manual-ladder">ラダー分類:</label>
+                <select id="manual-ladder">
+                    <option value="all">すべて（分類なし）</option>
+                    <option value="ladder1">ラダー1</option>
+                    <option value="ladder2">ラダー2</option>
+                    <option value="ladder3">ラダー3</option>
+                    <option value="ladder4">ラダー4</option>
+                    <option value="ladder5">ラダー5</option>
+                </select>
+
+                <button type="submit" id="save-manual-button">保存</button>
+                <button type="button" id="cancel-form-button">キャンセル</button>
+            </form>
+        </div>
+    </main>
+
+    <hr> <footer>
+        <p>&copy; 2025 Perfusion manual RGMC.</p>
+        </footer>
+
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+    <script src="https://www.google.com/jsapi"></script> <script src="script.js"></script>
+</body>
+</html>
