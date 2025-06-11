@@ -1,8 +1,8 @@
 // script.js の先頭付近、定数定義の後に追記
 
 // APIキーとクライアントIDは、あなたの実際の値に置き換えてください
-const API_KEY = 'YOUR_API_KEY'; // あなたのAPIキー
-const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com'; // あなたのクライアントID
+const API_KEY = 'AIzaSyBd1ecDNjPc7qKTad4mA0buKBm6PG7xAlc'; // あなたのAPIキー
+const CLIENT_ID = '214885714842-oqkuk56bfrft1lb4upotd5aeui4di3hl.apps.googleusercontent.com'; // あなたのクライアントID
 const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
 const SCOPES = 'https://www.googleapis.com/auth/drive.appfolder https://www.googleapis.com/auth/drive.file';
 
