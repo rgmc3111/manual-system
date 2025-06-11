@@ -1,159 +1,184 @@
-// script.js の先頭付近、定数定義の後に追記
+// script.js の全てのコードをこの内容で置き換えてください
 
-// APIキーとクライアントIDは、あなたの実際の値に置き換えてください
-const API_KEY = 'AIzaSyBd1ecDNjPc7qKTad4mA0buKBm6PG7xAlc'; // あなたのAPIキー
+// Google API クライアント ID と API キー
+// ★★★ ここにあなたの正しい値を入力してください ★★★
 const CLIENT_ID = '214885714842-oqkuk56bfrft1lb4upotd5aeui4di3hl.apps.googleusercontent.com'; // あなたのクライアントID
+const API_KEY = 'AIzaSyBd1ecDNjPc7qKTad4mA0buKBm6PG7xAlc'; // あなたのAPIキー
+
 const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
-const SCOPES = 'https://www.googleapis.com/auth/drive.appfolder https://www.googleapis.com/auth/drive.file';
+// Drive APIのスコープを変更。drive.file はアプリで作成・開いたファイルのみにアクセス。
+// drive.appfolder はアプリ固有の隠しフォルダにアクセス。
+// 今回はdrive.fileのみでOK。
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
-let tokenClient;
-let googlePickerInitialized = false;
-let gapiInitialized = false; // gapiクライアントの初期化状態を追跡するフラグ
+let tokenClient; // Google Identity Servicesのためのトークンクライアント
+let gapiInitialized = false; // gapiライブラリが初期化されたか
+let gisInitialized = false;  // gisライブラリが初期化されたか
 
-// ... (existing code: manuals, currentManualId, nextManualId などはそのまま) ...
-let manuals = []; // マニュアルデータを保持する配列
+// マニュアルデータを保持する配列とID管理
+let manuals = [];
 let currentManualId = null;
 let nextManualId = 1;
-// localStorageから既存のマニュアルデータを読み込む
+
+// ローカルストレージから既存のマニュアルデータを読み込む
 if (localStorage.getItem('manuals')) {
     manuals = JSON.parse(localStorage.getItem('manuals'));
     if (manuals.length > 0) {
         nextManualId = Math.max(...manuals.map(m => m.id)) + 1;
     }
 }
-// スライダー関連の要素を定義
+
+// Google Driveに保存された前回のファイルIDをローカルストレージから取得
+let lastUsedFileId = localStorage.getItem('lastUsedManualFileId');
+
+
+// DOM要素のキャッシュ (DOMContentLoadedより前に定義)
+const manualList = document.getElementById('manual-list');
+const searchInput = document.getElementById('search-input');
+const manualFormSection = document.getElementById('manual-form-section');
+const manualForm = document.getElementById('manual-form');
+const manualIdInput = document.getElementById('manual-id');
+const manualTitleInput = document.getElementById('manual-title');
+const manualBodyTextarea = document.getElementById('manual-body');
+const manualLadderSelect = document.getElementById('manual-ladder');
+const formTitle = document.getElementById('form-title');
 const slider = document.getElementById('manual-slider');
 const sliderValue = document.getElementById('slider-value');
-
-// グローバルスコープ（または適切なスコープ）に定義されていることを前提とします
-let lastUsedFileId = localStorage.getItem('lastUsedManualFileId'); // ローカルストレージから前回のファイルIDを取得
+const fileStatusElement = document.getElementById('file-status'); // ファイルステータス表示用要素
 
 
-// gapiがロードされたときに呼ばれる関数
+// --- Google API 初期化関連関数 ---
+
+// gapi.js がロードされたときに自動的に呼び出される関数 (index.htmlのonload属性で指定)
 function gapiLoaded() {
-    console.log('gapi loaded.');
+    console.log('gapi.js loaded.');
     gapi.load('client', initializeGapiClient);
 }
 
-// Google APIクライアントを初期化する関数
+// Google API クライアントを初期化する関数
 async function initializeGapiClient() {
-    await gapi.client.init({
-        apiKey: API_KEY,
-        discoveryDocs: DISCOVERY_DOCS,
-    });
-    await gapi.client.load('drive', 'v3');
-    gapiInitialized = true; // gapiが初期化されたことを示すフラグ
-    console.log('Google API Client for Drive loaded and initialized.');
-    checkBothApisLoaded();
+    try {
+        await gapi.client.init({
+            apiKey: API_KEY,
+            discoveryDocs: DISCOVERY_DOCS,
+        });
+        await gapi.client.load('drive', 'v3');
+        gapiInitialized = true;
+        console.log('Google API Client for Drive loaded and initialized.');
+        checkAllApisLoaded(); // 両方のAPIがロードされたかチェック
+    } catch (err) {
+        console.error('Failed to initialize gapi client:', err);
+        fileStatusElement.textContent = 'Google APIの初期化に失敗しました。';
+        // エラー時でもボタンを無効化しないように、後で有効化処理を呼び出す
+    }
 }
 
-// gisがロードされたときに呼ばれる関数
+// gis.js がロードされたときに自動的に呼び出される関数 (index.htmlのonload属性で指定)
 function gisLoaded() {
-    console.log('gis loaded.');
+    console.log('gis.js loaded.');
     tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
         callback: (tokenResponse) => {
             if (tokenResponse && tokenResponse.access_token) {
                 gapi.client.setToken(tokenResponse);
-                document.getElementById('file-status').textContent = 'Google Driveに接続済み。';
-                // ボタンの有効化
+                fileStatusElement.textContent = 'Google Driveに接続済み。';
+                // 認証成功時のみボタンを有効化
                 document.getElementById('load-from-drive-button').disabled = false;
                 document.getElementById('save-to-drive-button').disabled = false;
                 console.log('Access token obtained and set.');
 
-                // ここで自動読み込みを試みる (前回pickerCallbackでIDを保存していれば)
+                // ★自動読み込みを試みるロジック★
                 if (lastUsedFileId) {
                     console.log(`前回使用したファイルID (${lastUsedFileId}) があります。自動的に読み込みを試みます。`);
                     loadManualFromFileId(lastUsedFileId);
                 } else {
                     console.log('前回使用したファイルIDはありません。手動での読み込みを待機します。');
                 }
+
             } else {
                 console.error('アクセストークンの取得に失敗しました。');
-                document.getElementById('file-status').textContent = 'Google Driveへの接続に失敗しました。';
-                // ボタンの無効化
+                fileStatusElement.textContent = 'Google Driveへの接続に失敗しました。(認証エラー)';
+                // 認証失敗時はボタンを無効化
                 document.getElementById('load-from-drive-button').disabled = true;
                 document.getElementById('save-to-drive-button').disabled = true;
             }
         },
         error_callback: (err) => {
             console.error('GIS init error:', err);
-            document.getElementById('file-status').textContent = 'Google Driveへの接続に失敗しました。(認証エラー)';
+            fileStatusElement.textContent = 'Google Driveへの接続に失敗しました。(認証エラー)';
         }
     });
-    console.log('Google Identity Servicesクライアントが初期化されました。');
-    googlePickerInitialized = true; // gisが初期化されたことを示すフラグ
-    checkBothApisLoaded();
+    gisInitialized = true;
+    console.log('Google Identity Services client initialized.');
+    checkAllApisLoaded(); // 両方のAPIがロードされたかチェック
 }
 
 // 両方のAPIがロードされたかチェックし、必要な初期化を行う関数
-function checkBothApisLoaded() {
-    if (gapiInitialized && googlePickerInitialized) {
+function checkAllApisLoaded() {
+    if (gapiInitialized && gisInitialized) {
         console.log('Both gapi and gis are loaded. All set up.');
-        // ここで既にボタンのイベントリスナーが設定されていることを確認
-        // initializeGapiClient() と gisLoaded() のコールバック内でボタンが有効化されるため、
-        // ここで改めてイベントリスナーを設定する必要はありません。
+        // ここで特に何かをする必要はないが、ログ出力などで確認できる
     }
 }
 
-// 認証フローを開始し、読み込みボタンを有効化する関数
+
+// --- Google Drive 連携機能関連関数 ---
+
+// 「マニュアルを読み込む (Drive)」ボタンクリック時の処理
 async function authorizeAndLoadFromDrive() {
-    if (!gapiInitialized || !googlePickerInitialized) {
+    if (!gapiInitialized || !gisInitialized) {
         alert('Google APIの初期化が完了していません。しばらくお待ちください。');
         return;
     }
-    // オフラインアクセスが必要な場合は prompt: 'consent' を追加
+    // トークンをリクエストし、コールバック関数でPickerを開く
     tokenClient.callback = async (tokenResponse) => {
         if (tokenResponse && tokenResponse.access_token) {
-            gapi.client.setToken(tokenResponse);
-            console.log('Access token obtained for loading.');
+            gapi.client.setToken(tokenResponse); // 取得したトークンを設定
+            console.log('Access token obtained for loading. Opening Picker...');
             createPicker(); // Pickerを開く
         } else {
             console.error('アクセストークンの取得に失敗しました。');
             alert('Google Driveへの接続に失敗しました。(認証エラー)');
         }
     };
-    tokenClient.requestAccessToken({ prompt: 'consent' }); // 初回または権限変更時
+    tokenClient.requestAccessToken({ prompt: 'consent' }); // 初回または権限変更を促す
 }
 
-// 認証フローを開始し、保存ボタンを有効化する関数
+// 「マニュアルを保存 (Drive)」ボタンクリック時の処理
 async function authorizeAndSaveToDrive() {
-    if (!gapiInitialized || !googlePickerInitialized) {
+    if (!gapiInitialized || !gisInitialized) {
         alert('Google APIの初期化が完了していません。しばらくお待ちください。');
         return;
     }
+    // トークンをリクエストし、コールバック関数で保存処理を呼び出す
     tokenClient.callback = async (tokenResponse) => {
         if (tokenResponse && tokenResponse.access_token) {
-            gapi.client.setToken(tokenResponse);
-            console.log('Access token obtained for saving.');
-            saveManualsToDrive(); // 保存処理を開始
+            gapi.client.setToken(tokenResponse); // 取得したトークンを設定
+            console.log('Access token obtained for saving. Saving manuals...');
+            saveManualsToDrive(); // マニュアルをGoogle Driveに保存
         } else {
             console.error('アクセストークンの取得に失敗しました。');
             alert('Google Driveへの接続に失敗しました。(認証エラー)');
         }
     };
-    tokenClient.requestAccessToken({ prompt: 'consent' }); // 初回または権限変更時
+    tokenClient.requestAccessToken({ prompt: 'consent' }); // 初回または権限変更を促す
 }
-
 
 // Google Picker API を使用してファイルを選択する関数
 function createPicker() {
-    if (!googlePickerInitialized) {
-        alert('Google Picker APIの初期化が完了していません。しばらくお待ちください。');
-        return;
-    }
-
+    // Picker API キーは gapi.client.init で設定されているので、ここでの DeveloperKey は不要な場合があるが、冗長性として残す
+    // または、Google API Console でPicker APIを有効にしていることを確認
     const view = new google.picker.View(google.picker.ViewId.DOCS);
     view.setMimeTypes('application/json'); // JSONファイルのみを表示
-    view.setQuery('manual_data.json'); // manual_data.json のみを検索結果に表示 (オプション)
+    view.setQuery('manual_data.json'); // "manual_data.json" のみを検索結果に表示 (オプション)
 
     const picker = new google.picker.PickerBuilder()
         .enableFeature(google.picker.Feature.NAV_HIDDEN) // ナビゲーションを非表示
         .enableFeature(google.picker.Feature.MULTISELECT_ENABLED) // 複数選択を許可しない (デフォルトで単一選択)
         .addView(view)
-        .setOAuthToken(gapi.auth.getToken().access_token)
-        .setDeveloperKey(API_KEY)
+        .setOAuthToken(gapi.auth.getToken().access_token) // 認証トークンを設定
+        .setDeveloperKey(API_KEY) // APIキーを設定 (Picker API 用)
         .setCallback(pickerCallback)
         .build();
     picker.setVisible(true);
@@ -165,13 +190,16 @@ async function pickerCallback(data) {
         const doc = data[google.picker.Response.DOCUMENTS][0];
         const fileId = doc.id;
         const fileName = doc.name;
-        document.getElementById('file-status').textContent = `ファイル選択済み: ${fileName} (ID: ${fileId})`;
+        fileStatusElement.textContent = `ファイル選択済み: ${fileName} (ID: ${fileId})`;
 
-        // ★★★ ここで選択されたファイルのIDをローカルストレージに保存する ★★★
+        // ★★★ 選択されたファイルのIDをローカルストレージに保存する ★★★
         localStorage.setItem('lastUsedManualFileId', fileId);
         lastUsedFileId = fileId; // グローバル変数も更新
 
-        loadManualFromFileId(fileId); // 読み込み処理を共通関数に
+        loadManualFromFileId(fileId); // 選択されたファイルを読み込む
+    } else if (data[google.picker.Response.ACTION] === google.picker.Action.CANCEL) {
+        console.log('Picker was cancelled.');
+        fileStatusElement.textContent = 'ファイル選択をキャンセルしました。';
     }
 }
 
@@ -179,7 +207,7 @@ async function pickerCallback(data) {
 async function loadManualFromFileId(fileId) {
     if (!fileId) {
         console.warn("ファイルIDが指定されていません。");
-        document.getElementById('file-status').textContent = 'ファイルが選択されていません。';
+        fileStatusElement.textContent = 'ファイルが選択されていません。';
         return;
     }
     try {
@@ -187,64 +215,306 @@ async function loadManualFromFileId(fileId) {
             fileId: fileId,
             alt: 'media', // ファイルの内容を取得
         });
-        manuals = JSON.parse(response.body);
-        localStorage.setItem('manuals', JSON.stringify(manuals));
-        renderManuals();
+        manuals = JSON.parse(response.body); // 応答のボディをJSONとしてパース
+        localStorage.setItem('manuals', JSON.stringify(manuals)); // ローカルストレージにも保存
+        renderManuals(); // マニュアルを画面に表示
         alert('マニュアルをGoogle Driveから読み込みました。');
         console.log('Manuals loaded from Drive:', manuals);
+        fileStatusElement.textContent = `ファイル読み込み済み: (ID: ${fileId})`;
     } catch (err) {
         console.error('Google Driveからのファイルの読み込み中にエラーが発生しました:', err);
         alert('Google Driveからのファイルの読み込みに失敗しました。');
-        document.getElementById('file-status').textContent = 'ファイルの読み込みに失敗しました。';
+        fileStatusElement.textContent = 'ファイルの読み込みに失敗しました。';
         // 読み込み失敗時は保存されたファイルIDをクリア
         localStorage.removeItem('lastUsedManualFileId');
         lastUsedFileId = null;
     }
 }
 
-// ... (saveManualsToDrive 関数は以前提供した内容と同じでOK) ...
-// アップロードされているscript.jsの内容はsaveManualsToDrive関数から始まっていますが
-// この新しい構造では、上記で定義された saveManualsToDrive 関数を使用してください。
+// マニュアルデータをGoogle Driveに保存する関数
+async function saveManualsToDrive() {
+    const content = JSON.stringify(manuals, null, 2); // マニュアルデータをJSON文字列に変換
+    const fileName = 'manual_data.json';
+    const mimeType = 'application/json';
+
+    try {
+        let fileId = lastUsedFileId; // ★★★ ローカルストレージに保存されたIDを優先 ★★★
+
+        if (!fileId) { // lastUsedFileId がない場合のみ、Drive内を検索して既存ファイルを探す
+            console.log('lastUsedFileId がありません。Drive内で既存のファイルを探します。');
+            const filesResponse = await gapi.client.drive.files.list({
+                q: `name='${fileName}' and mimeType='${mimeType}' and trashed=false`, // ファイル名とMIMEタイプで検索
+                fields: 'files(id, name)', // IDと名前のみ取得
+            });
+            const existingFiles = filesResponse.result.files;
+
+            if (existingFiles.length > 0) {
+                fileId = existingFiles[0].id; // 見つかった最初のファイルのIDを使用
+                console.log(`既存のファイルIDが見つかりました: ${fileId}`);
+            } else {
+                console.log('既存のファイルは見つかりませんでした。新しいファイルを作成します。');
+            }
+        } else {
+            console.log(`lastUsedFileId を使用してファイルを更新します: ${fileId}`);
+        }
+
+        const metadata = {
+            'name': fileName,
+            'mimeType': mimeType,
+            // 'parents': ['appDataFolder'] // アプリ固有の隠しフォルダに保存したい場合
+        };
+
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', new Blob([content], { type: mimeType }));
+
+        const requestOptions = {
+            method: fileId ? 'PATCH' : 'POST', // fileIdがあれば更新(PATCH)、なければ新規作成(POST)
+            path: fileId ? `/upload/drive/v3/files/${fileId}?uploadType=multipart` : '/upload/drive/v3/files?uploadType=multipart',
+            headers: {
+                'Content-Type': 'multipart/related',
+            },
+            body: form,
+        };
+
+        const response = await gapi.client.request(requestOptions);
+        fileStatusElement.textContent = `ファイル保存済み: ${response.result.name} (ID: ${response.result.id})`;
+        alert(`マニュアルをGoogle Driveに保存しました: ${response.result.name}`);
+
+        // ★★★ 保存に成功したファイルのIDをローカルストレージに保存する ★★★
+        localStorage.setItem('lastUsedManualFileId', response.result.id);
+        lastUsedFileId = response.result.id; // グローバル変数も更新
+
+    } catch (err) {
+        console.error('Google Driveへのファイルの保存中にエラーが発生しました:', err);
+        alert('Google Driveへのファイルの保存に失敗しました。');
+        fileStatusElement.textContent = 'ファイルの保存に失敗しました。';
+        // エラー時は保存されたファイルIDをクリアし、次回は新規作成を試みる
+        localStorage.removeItem('lastUsedManualFileId');
+        lastUsedFileId = null;
+    }
+}
 
 
-// DOMContentLoaded イベントリスナー: ボタン以外の初期化処理
+// --- UI 操作関連関数 ---
+
+// マニュアルリストを表示する関数
+function renderManuals() {
+    manualList.innerHTML = '';
+    const searchTerm = searchInput.value.toLowerCase();
+    const filteredManuals = manuals.filter(manual => {
+        const matchesSearch = searchTerm === '' ||
+                              manual.title.toLowerCase().includes(searchTerm) ||
+                              manual.body.toLowerCase().includes(searchTerm);
+        const matchesLadder = currentFilterLadder === 'all' || manual.ladder === currentFilterLadder;
+        return matchesSearch && matchesLadder;
+    });
+
+    if (filteredManuals.length === 0) {
+        manualList.innerHTML = '<p class="no-manuals">表示するマニュアルがありません。</p>';
+        return;
+    }
+
+    filteredManuals.forEach(manual => {
+        const manualDiv = document.createElement('div');
+        manualDiv.classList.add('manual-item');
+        manualDiv.innerHTML = `
+            <h3>${manual.title}</h3>
+            <p>${manual.body.substring(0, 100)}...</p>
+            <div class="manual-actions">
+                <button class="edit-button" data-id="${manual.id}">編集</button>
+                <button class="delete-button" data-id="${manual.id}">削除</button>
+                <button class="detail-button" data-id="${manual.id}">詳細</button>
+            </div>
+        `;
+        manualDiv.querySelector('.edit-button').addEventListener('click', () => editManual(manual.id));
+        manualDiv.querySelector('.delete-button').addEventListener('click', () => deleteManual(manual.id));
+        manualDiv.querySelector('.detail-button').addEventListener('click', () => showDetail(manual.id));
+        manualList.appendChild(manualDiv);
+    });
+}
+
+// 新規登録ボタンクリック時の処理
+function addManual() {
+    currentManualId = null; // 新規登録のためIDをリセット
+    manualForm.reset(); // フォームをリセット
+    formTitle.textContent = '新規登録';
+    manualFormSection.classList.remove('hidden'); // フォームを表示
+    manualList.classList.add('hidden'); // リストを非表示
+    document.getElementById('search-area').classList.add('hidden'); // 検索エリアを非表示
+    document.querySelector('nav').classList.add('hidden'); // ナビゲーションを非表示
+}
+
+// フォームの保存ボタンクリック時の処理 (新規登録と編集の両方)
+function saveManual(event) {
+    event.preventDefault(); // フォームのデフォルト送信を防ぐ
+
+    const title = manualTitleInput.value.trim();
+    const body = manualBodyTextarea.value.trim();
+    const ladder = manualLadderSelect.value;
+
+    if (!title || !body) {
+        alert('タイトルと本文は必須です。');
+        return;
+    }
+
+    if (currentManualId === null) { // 新規登録
+        const newManual = {
+            id: nextManualId++,
+            title: title,
+            body: body,
+            ladder: ladder
+        };
+        manuals.push(newManual);
+    } else { // 編集
+        const index = manuals.findIndex(m => m.id === currentManualId);
+        if (index !== -1) {
+            manuals[index].title = title;
+            manuals[index].body = body;
+            manuals[index].ladder = ladder;
+        }
+    }
+
+    saveManualsToLocalStorage(); // ローカルストレージに保存
+    renderManuals(); // リストを更新
+
+    manualFormSection.classList.add('hidden'); // フォームを非表示
+    manualList.classList.remove('hidden'); // リストを表示
+    document.getElementById('search-area').classList.remove('hidden'); // 検索エリアを表示
+    document.querySelector('nav').classList.remove('hidden'); // ナビゲーションを表示
+    alert('マニュアルを保存しました。');
+}
+
+// マニュアル編集ボタンクリック時の処理
+function editManual(id) {
+    currentManualId = id;
+    const manualToEdit = manuals.find(manual => manual.id === id);
+
+    if (manualToEdit) {
+        formTitle.textContent = '編集';
+        manualIdInput.value = manualToEdit.id;
+        manualTitleInput.value = manualToEdit.title;
+        manualBodyTextarea.value = manualToEdit.body;
+        manualLadderSelect.value = manualToEdit.ladder;
+
+        manualFormSection.classList.remove('hidden');
+        manualList.classList.add('hidden');
+        document.getElementById('search-area').classList.add('hidden');
+        document.querySelector('nav').classList.add('hidden');
+    }
+}
+
+// マニュアル削除ボタンクリック時の処理
+function deleteManual(id) {
+    if (confirm('本当にこのマニュアルを削除しますか？')) {
+        manuals = manuals.filter(manual => manual.id !== id);
+        saveManualsToLocalStorage();
+        renderManuals();
+        alert('マニュアルを削除しました。');
+    }
+}
+
+// マニュアル詳細表示ボタンクリック時の処理
+function showDetail(id) {
+    const manual = manuals.find(m => m.id === id);
+    if (manual) {
+        const detailContent = document.getElementById('detail-content');
+        detailContent.innerHTML = `
+            <h2>${manual.title}</h2>
+            <p><strong>ラダー分類:</strong> ${manual.ladder === 'all' ? 'すべて（分類なし）' : manual.ladder}</p>
+            <p class="manual-detail-body">${manual.body}</p>
+            <button id="back-to-list-button-detail">リストに戻る</button>
+        `;
+        document.getElementById('detail-section').classList.remove('hidden');
+        manualList.classList.add('hidden');
+        document.getElementById('search-area').classList.add('hidden');
+        document.querySelector('nav').classList.add('hidden');
+
+        document.getElementById('back-to-list-button-detail').addEventListener('click', backToList);
+    }
+}
+
+
+// フォームのキャンセルボタンクリック時または詳細表示からリストに戻るボタンクリック時
+function cancelForm() {
+    manualFormSection.classList.add('hidden');
+    manualList.classList.remove('hidden');
+    document.getElementById('search-area').classList.remove('hidden');
+    document.querySelector('nav').classList.remove('hidden');
+    renderManuals(); // 変更を破棄してリストを再描画
+}
+
+function backToList() {
+    document.getElementById('detail-section').classList.add('hidden');
+    manualFormSection.classList.add('hidden');
+    manualList.classList.remove('hidden');
+    document.getElementById('search-area').classList.remove('hidden');
+    document.querySelector('nav').classList.remove('hidden');
+    renderManuals();
+}
+
+
+// ローカルストレージへの保存と読み込み
+function saveManualsToLocalStorage() {
+    localStorage.setItem('manuals', JSON.stringify(manuals));
+}
+
+function loadManualsFromLocalStorage() {
+    const storedManuals = localStorage.getItem('manuals');
+    if (storedManuals) {
+        manuals = JSON.parse(storedManuals);
+        if (manuals.length > 0) {
+            nextManualId = Math.max(...manuals.map(m => m.id)) + 1;
+        }
+    }
+}
+
+
+// --- 初期表示とイベントリスナーの設定 ---
+let currentFilterLadder = 'all'; // 現在選択されているラダー分類
+
 document.addEventListener('DOMContentLoaded', () => {
+    // ローカルストレージからマニュアルを読み込み、表示
     loadManualsFromLocalStorage();
     renderManuals();
 
-    // イベントリスナーのセットアップ
-    document.getElementById('search-input').addEventListener('input', renderManuals);
-    document.getElementById('add-manual-button').addEventListener('click', addManual); // 新規登録ボタン
-    document.getElementById('save-manual-button').addEventListener('click', saveManual);
+    // 検索ボックスのイベントリスナー
+    searchInput.addEventListener('input', renderManuals);
+
+    // 各ボタンのイベントリスナー
+    document.getElementById('add-manual-button').addEventListener('click', addManual);
+    manualForm.addEventListener('submit', saveManual); // フォーム送信で保存
     document.getElementById('cancel-form-button').addEventListener('click', cancelForm);
-    document.getElementById('back-to-list-button').addEventListener('click', backToList);
 
     // ナビゲーションアイテムのイベントリスナー
     document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', function() {
-            const ladder = this.dataset.ladder;
-            currentFilterLadder = ladder;
-            renderManuals();
+        // 新規登録ボタンはnav-itemクラスも持つが、個別処理
+        if (item.id !== 'new-manual-button') {
+            item.addEventListener('click', function() {
+                const ladder = this.dataset.ladder;
+                currentFilterLadder = ladder;
+                renderManuals();
 
-            // activeクラスの切り替え
-            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-            this.classList.add('active');
-        });
+                // activeクラスの切り替え
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+            });
+        }
     });
 
     // スライダーのイベントリスナー
     slider.addEventListener('input', (e) => {
         const value = e.target.value;
         sliderValue.textContent = value;
-        // マニュアルの並べ替え（ここでは仮に何もしない）
-        // filterAndDisplayManuals();
     });
 
     // Google Drive関連のボタンのイベントリスナーは、
-    // APIの初期化が完了した時点で gisLoaded() のコールバック内で設定されるため、
-    // ここで重複して設定する必要はありません。
-    // document.getElementById('load-from-drive-button').addEventListener('click', authorizeAndLoadFromDrive);
-    // document.getElementById('save-to-drive-button').addEventListener('click', authorizeAndSaveToDrive);
-});
+    // APIの初期化が完了した時点で gisLoaded() のコールバック内で有効化・設定されます。
+    document.getElementById('load-from-drive-button').addEventListener('click', authorizeAndLoadFromDrive);
+    document.getElementById('save-to-drive-button').addEventListener('click', authorizeAndSaveToDrive);
 
-// ... (renderManuals, addManual, saveManual, editManual, deleteManual, showDetail, cancelForm, backToList, loadManualsFromLocalStorage, saveManualsToLocalStorage など、その他の既存の関数はそのまま) ...
+    // 初期のボタン状態を設定（API初期化までは無効）
+    document.getElementById('load-from-drive-button').disabled = true;
+    document.getElementById('save-to-drive-button').disabled = true;
+    fileStatusElement.textContent = 'Google Driveに接続中...';
+});
