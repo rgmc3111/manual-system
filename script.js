@@ -33,17 +33,18 @@ let lastUsedFileId = localStorage.getItem('lastUsedManualFileId');
 
 
 // DOM要素のキャッシュ (DOMContentLoadedより前に定義)
-const manualList = document.getElementById('manual-list');
+const manualList = document.getElementById('content-list'); // ★ここを 'content-list' に修正★
 const searchInput = document.getElementById('search-input');
-const manualFormSection = document.getElementById('manual-form-section');
+const manualFormSection = document.getElementById('manual-form-area'); // index.htmlに合わせて修正
 const manualForm = document.getElementById('manual-form');
 const manualIdInput = document.getElementById('manual-id');
 const manualTitleInput = document.getElementById('manual-title');
 const manualBodyTextarea = document.getElementById('manual-body');
 const manualLadderSelect = document.getElementById('manual-ladder');
 const formTitle = document.getElementById('form-title');
-const slider = document.getElementById('manual-slider');
-const sliderValue = document.getElementById('slider-value');
+// sliderとsliderValueは使用されていないため、削除またはコメントアウト
+// const slider = document.getElementById('manual-slider');
+// const sliderValue = document.getElementById('slider-value');
 const fileStatusElement = document.getElementById('file-status'); // ファイルステータス表示用要素
 
 
@@ -300,7 +301,14 @@ async function saveManualsToDrive() {
 
 // マニュアルリストを表示する関数
 function renderManuals() {
-    manualList.innerHTML = '';
+    // manualListがnullでないことを確認してからinnerHTMLを設定
+    if (manualList) {
+        manualList.innerHTML = '';
+    } else {
+        console.error("Error: Element with ID 'content-list' not found.");
+        return; // 要素が見つからない場合は処理を中断
+    }
+
     const searchTerm = searchInput.value.toLowerCase();
     const filteredManuals = manuals.filter(manual => {
         const matchesSearch = searchTerm === '' ||
@@ -418,14 +426,14 @@ function deleteManual(id) {
 function showDetail(id) {
     const manual = manuals.find(m => m.id === id);
     if (manual) {
-        const detailContent = document.getElementById('detail-content');
+        const detailContent = document.getElementById('content-detail'); // main-content内のcontent-detailに修正
         detailContent.innerHTML = `
             <h2>${manual.title}</h2>
             <p><strong>ラダー分類:</strong> ${manual.ladder === 'all' ? 'すべて（分類なし）' : manual.ladder}</p>
             <p class="manual-detail-body">${manual.body}</p>
             <button id="back-to-list-button-detail">リストに戻る</button>
         `;
-        document.getElementById('detail-section').classList.remove('hidden');
+        document.getElementById('content-detail').classList.remove('hidden'); // IDに合わせて修正
         manualList.classList.add('hidden');
         document.getElementById('search-area').classList.add('hidden');
         document.querySelector('nav').classList.add('hidden');
@@ -445,7 +453,7 @@ function cancelForm() {
 }
 
 function backToList() {
-    document.getElementById('detail-section').classList.add('hidden');
+    document.getElementById('content-detail').classList.add('hidden'); // IDに合わせて修正
     manualFormSection.classList.add('hidden');
     manualList.classList.remove('hidden');
     document.getElementById('search-area').classList.remove('hidden');
@@ -502,11 +510,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // スライダーのイベントリスナー
-    slider.addEventListener('input', (e) => {
-        const value = e.target.value;
-        sliderValue.textContent = value;
-    });
+    // スライダーのイベントリスナー（sliderとsliderValueはHTMLに存在しないため、コメントアウトまたは削除を推奨）
+    // if (slider) { // sliderが存在する場合のみイベントリスナーを設定
+    //     slider.addEventListener('input', (e) => {
+    //         const value = e.target.value;
+    //         sliderValue.textContent = value;
+    //     });
+    // }
+
 
     // Google Drive関連のボタンのイベントリスナーは、
     // APIの初期化が完了した時点で gisLoaded() のコールバック内で有効化・設定されます。
