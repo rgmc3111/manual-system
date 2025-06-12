@@ -59,18 +59,21 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Pickerからのコールバック処理
     async function pickerCallback(data) {
+        console.log("[pickerCallback] Picker data:", data);
         if (data[google.picker.Response.ACTION] == google.picker.Action.PICKED) {
             const doc = data[google.picker.Response.DOCUMENTS][0];
             const fileId = doc.id;
             const fileName = doc.name;
             
+            console.log(`[pickerCallback] File picked: ID=${fileId}, Name=${fileName}`);
             // Pickerで選択されたファイルのIDを currentManualsFileId に設定し、ローカルストレージにも保存
             currentManualsFileId = fileId;    
             localStorage.setItem('manualsFileId', currentManualsFileId); 
 
             fileStatus.textContent = `選択中のファイル: ${fileName}`;
-            await loadManualsFromDrive(fileId);
+            await loadManualsFromDrive(fileId); // Pickerで選択したIDを渡す
         } else if (data[google.picker.Response.ACTION] == google.picker.Action.CANCEL) {
+            console.log("[pickerCallback] Picker cancelled.");
             fileStatus.textContent = "ファイルの選択がキャンセルされました。";
             alert("Google Driveからのマニュアル読み込みをキャンセルしました。"); // キャンセル時のアラート
         }
@@ -78,12 +81,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Google Drive からマニュアルを読み込む ---
     async function loadManualsFromDrive(fileIdToLoad) {
+        console.log(`[loadManualsFromDrive] called with fileIdToLoad: ${fileIdToLoad}, currentManualsFileId: ${currentManualsFileId}`);
+
         if (!gapi.client.getToken()) {
-            console.warn("Attempted to load from Drive without authentication. Initiating auth.");
+            console.warn("[loadManualsFromDrive] Attempted to load from Drive without authentication. Initiating auth.");
             await handleAuthClick(); 
             if (!gapi.client.getToken()) {
                 alert('Google Driveに接続されていません。');
                 fileStatus.textContent = "Google Driveに接続されていません。";
+                console.error("[loadManualsFromDrive] Authentication failed, cannot load.");
                 return;
             }
         }
@@ -92,22 +98,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetFileId = fileIdToLoad || currentManualsFileId;
 
         if (!targetFileId) {
+            console.log("[loadManualsFromDrive] No targetFileId found. Prompting user for selection.");
             fileStatus.textContent = "読み込むファイルが特定できません。マニュアルを読み込むボタンでファイルを選択してください。";
-            alert("Google Driveからの読み込みにはファイル指定が必要です。ファイルを選択してください。");
-            createPicker(); // ファイルが特定できない場合はPickerを開く
+            // alert("Google Driveからの読み込みにはファイル指定が必要です。ファイルを選択してください。"); // このアラートは少し強引な場合がある
+            // createPicker(); // 自動でPickerを開くのは少し強引な場合があるため、ユーザーに促す
             return;
         }
+
+        console.log(`[loadManualsFromDrive] Attempting to load file with ID: ${targetFileId}`);
 
         try {
             const response = await gapi.client.drive.files.get({
                 fileId: targetFileId,
                 alt: 'media',    
             });
+            console.log("[loadManualsFromDrive] Drive API response received:", response);
+
             // JSONパースが失敗する可能性があるためtry-catchで囲む
             try {
+                // ここで response.body が期待通り文字列であることを確認
+                if (typeof response.body !== 'string' || !response.body.trim()) {
+                    console.warn("[loadManualsFromDrive] Response body is empty or not a string. Assuming invalid JSON.", response.body);
+                    throw new Error("Empty or invalid JSON body from Drive.");
+                }
                 manuals = JSON.parse(response.body); // response.result ではなく response.body を使う
+                console.log("[loadManualsFromDrive] JSON parsed successfully:", manuals);
             } catch (parseError) {
-                console.error('Error parsing JSON from Drive:', parseError);
+                console.error('[loadManualsFromDrive] Error parsing JSON from Drive:', parseError, 'Response body:', response.body);
                 alert('Google Driveから読み込んだデータが不正な形式です。このファイルは利用できません。');
                 manuals = []; // 不正な場合はデータをクリア
                 // 不正なファイルを指定した場合は、currentManualsFileIdもクリアして再選択を促す
@@ -131,45 +148,66 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('manualsFileId', currentManualsFileId);
 
         } catch (err) {
-            console.error('Error loading manuals from Drive:', err);
-            // 404 Not Found (ファイルが見つからない) エラーの場合の特別な処理
-            if (err.result && err.result.error && err.result.error.code === 404) {
-                alert('Google Drive上のマニュアルファイルが見つかりません。新しいファイルを作成するか、別のファイルを選択してください。');
-                fileStatus.textContent = "ファイルが見つかりません。新しいファイルを作成するか、既存ファイルを選択してください。";
-            } else {
-                alert('Google Driveからのマニュアル読み込みに失敗しました。\n' + (err.result?.error?.message || err.message));
-                fileStatus.textContent = "読み込みエラーが発生しました。新しいファイルを作成するか、既存ファイルを選択してください。";
+            console.error('[loadManualsFromDrive] Error loading manuals from Drive:', err);
+            // エラーオブジェクトの構造を詳しくログに出力
+            if (err.result) {
+                console.error("[loadManualsFromDrive] Drive API error result:", err.result);
+            } else if (err.message) {
+                console.error("[loadManualsFromDrive] Generic error message:", err.message);
             }
-            manuals = [];    
-            localStorage.removeItem('manuals'); 
-            // エラー時は currentManualsFileId をクリアし、次回は新規作成または選択を促す
-            currentManualsFileId = null;
-            localStorage.removeItem('manualsFileId');
-            displayManuals(currentLadder, currentSearchTerm);
-            // エラー後に Picker を開くことを促す
-            // if (gapi.client.getToken()) { // 認証済みの場合のみ
-            //     createPicker(); // 自動でPickerを開くことは、ユーザーの意図に反する可能性もあるためコメントアウト
-            // }
+
+            // 404 Not Found (ファイルが見つからない) エラーの場合の特別な処理を強化
+            // err.result が存在しない場合や、エラーコードが404でなくても、ファイルが見つからない状況に対応するため、
+            // エラーメッセージの内容で判断することも検討
+            if (err.result && err.result.error && err.result.error.code === 404) {
+                console.log("[loadManualsFromDrive] Caught 404 error: File not found.");
+                alert('Google Drive上のマニュアルファイルが見つかりません。別のファイルを選択するか、新しいファイルを作成してください。');
+                fileStatus.textContent = "ファイルが見つかりません。Pickerで既存ファイルを選択するか、新規作成してください。";
+                // ファイルが見つからなかった場合は、既存のIDをクリアし、Pickerを自動的に開く
+                currentManualsFileId = null;
+                localStorage.removeItem('manualsFileId');
+                displayManuals(currentLadder, currentSearchTerm); // リストをクリアして表示
+                createPicker(); // 自動でPickerを開いてファイル選択を促す
+            } else if (err.message && err.message.includes('File not found')) { // 404コードがないがメッセージで判断する場合
+                console.log("[loadManualsFromDrive] Caught 'File not found' message in error. Proceeding as 404.");
+                alert('Google Drive上のマニュアルファイルが見つかりません。別のファイルを選択するか、新しいファイルを作成してください。');
+                fileStatus.textContent = "ファイルが見つかりません。Pickerで既存ファイルを選択するか、新規作成してください。";
+                currentManualsFileId = null;
+                localStorage.removeItem('manualsFileId');
+                displayManuals(currentLadder, currentSearchTerm);
+                createPicker();
+            }
+            else {
+                alert('Google Driveからのマニュアル読み込みに失敗しました。\n' + (err.result?.error?.message || err.message || "不明なエラー"));
+                fileStatus.textContent = "読み込みエラーが発生しました。新しいファイルを作成するか、既存ファイルを選択してください。";
+                currentManualsFileId = null;
+                localStorage.removeItem('manualsFileId');
+                displayManuals(currentLadder, currentSearchTerm); // リストをクリアして表示
+            }
         }
     }
 
     // --- Google Drive にマニュアルを保存する ---
     async function saveManualsToDrive() {
+        console.log("[saveManualsToDrive] called. currentManualsFileId:", currentManualsFileId);
         if (!gapi.client.getToken()) {
-            console.warn("Attempted to save to Drive without authentication. Initiating auth.");
+            console.warn("[saveManualsToDrive] Attempted to save to Drive without authentication. Initiating auth.");
             await handleAuthClick(); 
             if (!gapi.client.getToken()) { 
                 alert('Google Driveに接続されていません。');
                 fileStatus.textContent = "Google Driveに接続されていません。";
+                console.error("[saveManualsToDrive] Authentication failed, cannot save.");
                 return;
             }
         }
 
         const fileContent = JSON.stringify(manuals, null, 4);    
         const mimeType = 'application/json';
+        console.log("[saveManualsToDrive] File content ready. Length:", fileContent.length);
 
         try {
             if (currentManualsFileId) {
+                console.log("[saveManualsToDrive] Updating existing file with ID:", currentManualsFileId);
                 // 既存ファイルを更新
                 const boundary = '-------314159265358979323846';
                 const delimiter = "\r\n--" + boundary + "\r\n";
@@ -198,7 +236,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 fileStatus.textContent = `マニュアルをGoogle Drive上の既存ファイルに保存しました: ${currentManualsFileId}`;
                 alert('マニュアルをGoogle Drive上の既存ファイルに保存しました。');
+                console.log("[saveManualsToDrive] File updated successfully.");
             } else {
+                console.log("[saveManualsToDrive] Creating new file.");
                 // 新規ファイルを作成
                 const fileMetadata = {
                     'name': 'manual_data.json',
@@ -217,16 +257,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('manualsFileId', currentManualsFileId); // 新規作成時にもIDを保存
                 fileStatus.textContent = `新しいマニュアルファイルをGoogle Driveに保存しました (ID: ${currentManualsFileId})`;
                 alert('マニュアルを新しいGoogle Driveファイルに保存しました。');
+                console.log("[saveManualsToDrive] New file created successfully. ID:", currentManualsFileId);
             }
         } catch (err) {
-            console.error('Error saving manuals to Drive:', err);
-            alert('Google Driveへのマニュアル保存に失敗しました。\n' + (err.result?.error?.message || err.message));
+            console.error('[saveManualsToDrive] Error saving manuals to Drive:', err);
+            if (err.result) {
+                console.error("[saveManualsToDrive] Drive API error result:", err.result);
+            } else if (err.message) {
+                console.error("[saveManualsToDrive] Generic error message:", err.message);
+            }
+            alert('Google Driveへのマニュアル保存に失敗しました。\n' + (err.result?.error?.message || err.message || "不明なエラー"));
             fileStatus.textContent = "保存エラーが発生しました。";
         }
     }
 
     // マニュアル一覧を表示する関数
     function displayManuals(filterLadder, searchTerm = '') {
+        console.log(`[displayManuals] called. Filter: ${filterLadder}, Search: ${searchTerm}. Manuals count: ${manuals.length}`);
         contentListDiv.innerHTML = '';    
         const ul = document.createElement('ul');
         ul.id = 'manual-list-ul';    
@@ -247,9 +294,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (gapiInited && gisInited && gapi.client.getToken()) {
                 if (currentManualsFileId) {
                     fileStatus.textContent = `現在、ファイル (ID: ${currentManualsFileId}) が選択されていますが、マニュアルがありません。新規登録するか、このファイルが正しいか確認してください。`;
+                    console.log("[displayManuals] File ID exists but no manuals found.");
                 } else {
                     fileStatus.textContent = "マニュアルがありません。Google Driveから読み込むか、新規登録してGoogle Driveに保存してください。";
+                    console.log("[displayManuals] No file ID and no manuals found.");
                 }
+            } else {
+                fileStatus.textContent = "マニュアルがありません。Google Driveに接続してください。";
+                console.log("[displayManuals] Not connected to Drive and no manuals found.");
             }
         } else {
             filteredManuals.forEach(manual => {
@@ -497,19 +549,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Google Drive 関連のボタンイベント
     loadFromDriveButton.addEventListener('click', async () => {
+        console.log("[loadFromDriveButton] clicked.");
         await handleAuthClick(); // まず認証
         if (gapi.client.getToken()) {
             if (currentManualsFileId) {
                 // 既にファイルIDがある場合、確認ダイアログ
+                console.log(`[loadFromDriveButton] currentManualsFileId exists: ${currentManualsFileId}. Prompting user.`);
                 if (confirm(`以前使用したファイル (ID: ${currentManualsFileId}) を読み込みますか？\n「キャンセル」で別のファイルを選択できます。`)) {
+                    // ここでロードを試みるが、失敗した場合は loadManualsFromDrive 内で Picker が自動的に開かれるようにする
                     await loadManualsFromDrive(currentManualsFileId);
                 } else {
+                    console.log("[loadFromDriveButton] User chose to select another file. Opening Picker.");
                     createPicker(); // 別のファイルを選択
                 }
             } else {
-                // ファイルIDがない場合はPickerを開く
+                // ファイルIDがない場合はPickerを直接開く
+                console.log("[loadFromDriveButton] No currentManualsFileId. Opening Picker.");
                 createPicker(); 
             }
+        } else {
+            // 認証されていない場合は、認証を促す
+            console.log("[loadFromDriveButton] Not authenticated. Prompting for auth.");
+            alert("Google Driveからファイルを読み込むには認証が必要です。認証を完了させてください。");
+            // handleAuthClick(); // 認証プロセスを再度トリガー (すでに上で行われているので不要)
         }
     });
     saveToDriveButton.addEventListener('click', saveManualsToDrive); 
@@ -522,12 +584,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- Google API クライアントライブラリの読み込み完了時に呼び出されるグローバル関数 ---
 function gapiLoaded() {
-    console.log("gapiLoaded called."); // デバッグ用
+    console.log("[gapiLoaded] called."); // デバッグ用
     gapi.load('client', initializeGapiClient); // 'client' ライブラリのみロード
 }
 
 async function initializeGapiClient() {
-    console.log("initializeGapiClient called."); // デバッグ用
+    console.log("[initializeGapiClient] called."); // デバッグ用
     await gapi.client.init({
         apiKey: API_KEY,    
         discoveryDocs: DISCOVERY_DOCS,
@@ -538,11 +600,12 @@ async function initializeGapiClient() {
 
 // --- Google Identity Services JavaScriptライブラリの読み込み完了時に呼び出されるグローバル関数 ---
 function gisLoaded() {
-    console.log("gisLoaded called."); // デバッグ用
+    console.log("[gisLoaded] called."); // デバッグ用
     tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
         callback: (tokenResponse) => {
+            console.log("[gisLoaded] Token client callback received.", tokenResponse);
             if (tokenResponse && tokenResponse.access_token) {
                 gapi.client.setToken(tokenResponse);
                 gisInited = true;
@@ -558,7 +621,7 @@ function gisLoaded() {
                     }
                 }
             } else {
-                console.error('Failed to get access token:', tokenResponse);
+                console.error('[gisLoaded] Failed to get access token:', tokenResponse);
                 if (fileStatus) { 
                     fileStatus.textContent = "Google Driveへの接続に失敗しました。";
                 }
@@ -571,46 +634,60 @@ function gisLoaded() {
 
 // ボタンの有効化判定と初期ファイル特定
 function maybeEnableButtons() {
+    console.log("[maybeEnableButtons] called. gapiInited:", gapiInited, "gisInited:", gisInited);
     if (gapiInited && gisInited) {
         // DOM要素がロードされているか確認
         if (loadFromDriveButton && saveToDriveButton && fileStatus) {
             loadFromDriveButton.disabled = false;
             saveToDriveButton.disabled = false;
             if (gapi.client.getToken()) {
+                console.log("[maybeEnableButtons] Google Drive authenticated.");
                 if (currentManualsFileId) {
                     fileStatus.textContent = `Google Driveに接続済み。以前のファイル (ID: ${currentManualsFileId}) を読み込み中...`;
+                    console.log("[maybeEnableButtons] currentManualsFileId exists. Attempting auto-load.");
                     // ローカルストレージにファイルIDがあれば、自動でそのファイルを読み込もうとする
+                    // 失敗した場合は loadManualsFromDrive 内で適切なエラーハンドリングとPicker呼び出しが行われる
                     loadManualsFromDrive(currentManualsFileId); 
                 } else {
                     fileStatus.textContent = "Google Driveに接続済み。マニュアルファイルを選択するか、新規に作成してください。";
+                    console.log("[maybeEnableButtons] No currentManualsFileId. Prompting user to select/create.");
                     // 初回アクセスやファイルクリア後など、ファイルが特定されていない場合はPickerを自動的に開く
-                    // ただし、アラート後が良いので、ユーザー操作を待つか、pickerCallbackが閉じられた後に実行する
-                    // alert("Google Driveからマニュアルファイルを読み込むか、新規に作成してください。");
-                    // createPicker(); // 自動でPickerを開くよりも、ユーザーのクリックを待つ方がUXが良い場合が多い
+                    // alert("Google Driveからマニュアルファイルを読み込むか、新規に作成してください。"); // このアラートは初回のみ表示するのが望ましい
+                    // createPicker(); // アプリ起動時にいきなりPickerを開くのは、ユーザーの意図に反する可能性があるため、ここでは自動起動はさせない
+                                    // ユーザーが「読み込む」ボタンを押すのを待つか、ファイルがない場合にのみ促す
                 }
             } else {
                 fileStatus.textContent = "Google Driveに接続していません。ボタンをクリックして接続してください。";    
+                console.log("[maybeEnableButtons] Google Drive not authenticated.");
             }
+        } else {
+            console.warn("[maybeEnableButtons] DOM elements (buttons/status) not yet available.");
         }
     }
 }
 
 // 認証フローを開始/確認
 async function handleAuthClick() {
+    console.log("[handleAuthClick] called.");
     if (!gisInited) {
         fileStatus.textContent = "Google API初期化中...しばらくお待ちください。";
+        console.warn("[handleAuthClick] GIS not inited yet.");
         return; 
     }
+    // トークンがない、または有効期限が短い場合に認証リクエスト
     if (!gapi.client.getToken() || gapi.client.getToken().expires_in < 60) {    
+        console.log("[handleAuthClick] Requesting new access token.");
         try {
             await tokenClient.requestAccessToken();
+            console.log("[handleAuthClick] Access token requested successfully.");
         } catch (error) {
-            console.error("Authentication failed:", error);
+            console.error("[handleAuthClick] Authentication failed:", error);
             if (fileStatus) {
                 fileStatus.textContent = "Google Driveへの接続に失敗しました。";
             }
         }
     } else {
+        console.log("[handleAuthClick] Access token is valid.");
         if (fileStatus) {
             fileStatus.textContent = "Google Driveに接続済み。";
         }
@@ -619,9 +696,10 @@ async function handleAuthClick() {
 
 // Pickerインスタンスを構築する関数 (google.loadのcallbackとして呼び出される)
 function createPicker() {
-    console.log("createPicker called."); 
+    console.log("[createPicker] called."); 
     if (!gapiInited || !gapi.client.getToken()) {
         fileStatus.textContent = "Google Driveに接続していません。認証が必要です。";
+        console.warn("[createPicker] Cannot create picker: Not authenticated or GAPI not inited.");
         return;
     }
 
@@ -638,6 +716,7 @@ function createPicker() {
         .setCallback(pickerCallback)
         .build();
     picker.setVisible(true);
+    console.log("[createPicker] Picker built and set visible.");
 }
 
 // ★重要: google.load は DOMContentLoaded の外に配置 (Picker APIをロード) ★
