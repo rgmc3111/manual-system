@@ -76,6 +76,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("[pickerCallback] Picker cancelled.");
             fileStatus.textContent = "ファイルの選択がキャンセルされました。";
             alert("Google Driveからのマニュアル読み込みをキャンセルしました。"); // キャンセル時のアラート
+            // Pickerキャンセル後も、現在の状態（おそらく空のリスト）を表示する
+            displayManuals(currentLadder, currentSearchTerm);
         }
     }
 
@@ -83,13 +85,15 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadManualsFromDrive(fileIdToLoad) {
         console.log(`[loadManualsFromDrive] called with fileIdToLoad: ${fileIdToLoad}, currentManualsFileId: ${currentManualsFileId}`);
 
+        // 認証状態を再チェックし、必要であれば認証を促す
         if (!gapi.client.getToken()) {
             console.warn("[loadManualsFromDrive] Attempted to load from Drive without authentication. Initiating auth.");
-            await handleAuthClick(); 
-            if (!gapi.client.getToken()) {
-                alert('Google Driveに接続されていません。');
+            // 認証が完了するまで待つ
+            const authSuccess = await handleAuthClick(); 
+            if (!authSuccess || !gapi.client.getToken()) {
+                alert('Google Driveに接続されていません。マニュアルの読み込みを続行できません。');
                 fileStatus.textContent = "Google Driveに接続されていません。";
-                console.error("[loadManualsFromDrive] Authentication failed, cannot load.");
+                console.error("[loadManualsFromDrive] Authentication failed or cancelled, cannot load.");
                 return;
             }
         }
@@ -98,10 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetFileId = fileIdToLoad || currentManualsFileId;
 
         if (!targetFileId) {
-            console.log("[loadManualsFromDrive] No targetFileId found. Prompting user for selection.");
+            console.log("[loadManualsFromDrive] No targetFileId found. Opening Picker for user selection.");
             fileStatus.textContent = "読み込むファイルが特定できません。マニュアルを読み込むボタンでファイルを選択してください。";
-            // alert("Google Driveからの読み込みにはファイル指定が必要です。ファイルを選択してください。"); // このアラートは少し強引な場合がある
-            // createPicker(); // 自動でPickerを開くのは少し強引な場合があるため、ユーザーに促す
+            createPicker(); // ファイルIDがない場合は直接Pickerを開く
             return;
         }
 
@@ -131,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentManualsFileId = null;
                 localStorage.removeItem('manualsFileId');
                 displayManuals(currentLadder, currentSearchTerm);
+                createPicker(); // 不正なファイルの場合もPickerを開いて再選択を促す
                 return;
             }
             
@@ -166,6 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // ファイルが見つからなかった場合は、既存のIDをクリアし、Pickerを自動的に開く
                 currentManualsFileId = null;
                 localStorage.removeItem('manualsFileId');
+                manuals = []; // データもクリアする
                 displayManuals(currentLadder, currentSearchTerm); // リストをクリアして表示
                 createPicker(); // 自動でPickerを開いてファイル選択を促す
             } else if (err.message && err.message.includes('File not found')) { // 404コードがないがメッセージで判断する場合
@@ -174,6 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileStatus.textContent = "ファイルが見つかりません。Pickerで既存ファイルを選択するか、新規作成してください。";
                 currentManualsFileId = null;
                 localStorage.removeItem('manualsFileId');
+                manuals = []; // データもクリアする
                 displayManuals(currentLadder, currentSearchTerm);
                 createPicker();
             }
@@ -182,6 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileStatus.textContent = "読み込みエラーが発生しました。新しいファイルを作成するか、既存ファイルを選択してください。";
                 currentManualsFileId = null;
                 localStorage.removeItem('manualsFileId');
+                manuals = []; // データもクリアする
                 displayManuals(currentLadder, currentSearchTerm); // リストをクリアして表示
             }
         }
@@ -190,13 +197,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Google Drive にマニュアルを保存する ---
     async function saveManualsToDrive() {
         console.log("[saveManualsToDrive] called. currentManualsFileId:", currentManualsFileId);
+        // 保存時も認証状態をチェックし、必要であれば認証を促す
         if (!gapi.client.getToken()) {
             console.warn("[saveManualsToDrive] Attempted to save to Drive without authentication. Initiating auth.");
-            await handleAuthClick(); 
-            if (!gapi.client.getToken()) { 
-                alert('Google Driveに接続されていません。');
+            const authSuccess = await handleAuthClick(); 
+            if (!authSuccess || !gapi.client.getToken()) { 
+                alert('Google Driveに接続されていません。マニュアルの保存を続行できません。');
                 fileStatus.textContent = "Google Driveに接続されていません。";
-                console.error("[saveManualsToDrive] Authentication failed, cannot save.");
+                console.error("[saveManualsToDrive] Authentication failed or cancelled, cannot save.");
                 return;
             }
         }
@@ -549,9 +557,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Google Drive 関連のボタンイベント
     loadFromDriveButton.addEventListener('click', async () => {
-        console.log("[loadFromDriveButton] clicked.");
-        await handleAuthClick(); // まず認証
-        if (gapi.client.getToken()) {
+        console.log("[loadFromDriveButton] clicked. Initiating auth check.");
+        // 認証を試み、認証が完了するまで待つ
+        const authSuccess = await handleAuthClick(); 
+        
+        if (authSuccess && gapi.client.getToken()) {
+            console.log("[loadFromDriveButton] Authentication successful. Checking file ID.");
             if (currentManualsFileId) {
                 // 既にファイルIDがある場合、確認ダイアログ
                 console.log(`[loadFromDriveButton] currentManualsFileId exists: ${currentManualsFileId}. Prompting user.`);
@@ -564,14 +575,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 // ファイルIDがない場合はPickerを直接開く
-                console.log("[loadFromDriveButton] No currentManualsFileId. Opening Picker.");
+                console.log("[loadFromDriveButton] No currentManualsFileId. Opening Picker directly.");
                 createPicker(); 
             }
         } else {
-            // 認証されていない場合は、認証を促す
-            console.log("[loadFromDriveButton] Not authenticated. Prompting for auth.");
-            alert("Google Driveからファイルを読み込むには認証が必要です。認証を完了させてください。");
-            // handleAuthClick(); // 認証プロセスを再度トリガー (すでに上で行われているので不要)
+            console.log("[loadFromDriveButton] Authentication failed or not granted. Cannot proceed with Drive actions.");
+            alert("Google Driveへの接続が必要です。もう一度『マニュアルを読み込む』ボタンをクリックして認証を完了してください。");
+            fileStatus.textContent = "Google Driveに接続していません。";
         }
     });
     saveToDriveButton.addEventListener('click', saveManualsToDrive); 
@@ -595,6 +605,7 @@ async function initializeGapiClient() {
         discoveryDocs: DISCOVERY_DOCS,
     });
     gapiInited = true;
+    console.log("[initializeGapiClient] GAPI client initialized.");
     maybeEnableButtons();
 }
 
@@ -609,11 +620,11 @@ function gisLoaded() {
             if (tokenResponse && tokenResponse.access_token) {
                 gapi.client.setToken(tokenResponse);
                 gisInited = true;
+                console.log("[gisLoaded] GIS token set. Access Token:", tokenResponse.access_token);
+                // トークン取得後、ボタンの状態を更新
                 maybeEnableButtons();
                 if (fileStatus) { 
                     fileStatus.textContent = "Google Driveに接続済み。";
-                    // 認証が完了し、ファイルIDがローカルストレージにあれば自動読み込みを試みる
-                    // ただし、この自動読み込みは maybeEnableButtons 内で一元的に行う
                     if (currentManualsFileId) {
                          fileStatus.textContent += ` 以前のファイル (ID: ${currentManualsFileId}) が選択されています。`;
                     } else {
@@ -621,14 +632,16 @@ function gisLoaded() {
                     }
                 }
             } else {
-                console.error('[gisLoaded] Failed to get access token:', tokenResponse);
+                console.error('[gisLoaded] Failed to get access token or token response invalid:', tokenResponse);
                 if (fileStatus) { 
                     fileStatus.textContent = "Google Driveへの接続に失敗しました。";
                 }
+                gisInited = false; // 認証失敗時は初期化状態をfalseに
             }
         },
     });
-    gisInited = true;
+    gisInited = true; // initTokenClientの完了で初期化済みとマーク
+    console.log("[gisLoaded] GIS client initialized.");
     maybeEnableButtons();
 }
 
@@ -640,8 +653,8 @@ function maybeEnableButtons() {
         if (loadFromDriveButton && saveToDriveButton && fileStatus) {
             loadFromDriveButton.disabled = false;
             saveToDriveButton.disabled = false;
-            if (gapi.client.getToken()) {
-                console.log("[maybeEnableButtons] Google Drive authenticated.");
+            if (gapi.client.getToken()) { // トークンが実際に存在し有効かチェック
+                console.log("[maybeEnableButtons] Google Drive authenticated. Token exists.");
                 if (currentManualsFileId) {
                     fileStatus.textContent = `Google Driveに接続済み。以前のファイル (ID: ${currentManualsFileId}) を読み込み中...`;
                     console.log("[maybeEnableButtons] currentManualsFileId exists. Attempting auto-load.");
@@ -651,17 +664,15 @@ function maybeEnableButtons() {
                 } else {
                     fileStatus.textContent = "Google Driveに接続済み。マニュアルファイルを選択するか、新規に作成してください。";
                     console.log("[maybeEnableButtons] No currentManualsFileId. Prompting user to select/create.");
-                    // 初回アクセスやファイルクリア後など、ファイルが特定されていない場合はPickerを自動的に開く
-                    // alert("Google Driveからマニュアルファイルを読み込むか、新規に作成してください。"); // このアラートは初回のみ表示するのが望ましい
-                    // createPicker(); // アプリ起動時にいきなりPickerを開くのは、ユーザーの意図に反する可能性があるため、ここでは自動起動はさせない
-                                    // ユーザーが「読み込む」ボタンを押すのを待つか、ファイルがない場合にのみ促す
                 }
             } else {
                 fileStatus.textContent = "Google Driveに接続していません。ボタンをクリックして接続してください。";    
-                console.log("[maybeEnableButtons] Google Drive not authenticated.");
+                console.log("[maybeEnableButtons] Google Drive not authenticated. No valid token.");
             }
         } else {
-            console.warn("[maybeEnableButtons] DOM elements (buttons/status) not yet available.");
+            console.warn("[maybeEnableButtons] DOM elements (buttons/status) not yet available. Retrying soon.");
+            // DOMContentLoaded 内で呼ばれているため、通常はすぐに要素が利用可能になるはずだが、念のため遅延再試行
+            // setTimeout(maybeEnableButtons, 100); 
         }
     }
 }
@@ -671,35 +682,63 @@ async function handleAuthClick() {
     console.log("[handleAuthClick] called.");
     if (!gisInited) {
         fileStatus.textContent = "Google API初期化中...しばらくお待ちください。";
-        console.warn("[handleAuthClick] GIS not inited yet.");
-        return; 
+        console.warn("[handleAuthClick] GIS not inited yet. Cannot request token.");
+        return false; // 認証開始できない
     }
-    // トークンがない、または有効期限が短い場合に認証リクエスト
-    if (!gapi.client.getToken() || gapi.client.getToken().expires_in < 60) {    
-        console.log("[handleAuthClick] Requesting new access token.");
-        try {
-            await tokenClient.requestAccessToken();
-            console.log("[handleAuthClick] Access token requested successfully.");
-        } catch (error) {
-            console.error("[handleAuthClick] Authentication failed:", error);
-            if (fileStatus) {
-                fileStatus.textContent = "Google Driveへの接続に失敗しました。";
-            }
-        }
-    } else {
-        console.log("[handleAuthClick] Access token is valid.");
+
+    // すでに有効なトークンがあるかチェック
+    const currentToken = gapi.client.getToken();
+    if (currentToken && currentToken.expires_in > 60) {    
+        console.log("[handleAuthClick] Existing access token is valid.");
+        fileStatus.textContent = "Google Driveに接続済み。";
+        return true; // 認証済み
+    }
+
+    console.log("[handleAuthClick] Requesting new access token.");
+    try {
+        // requestAccessToken は promise を返さないので、カスタムプロミスでラップして完了を待つ
+        return new Promise((resolve, reject) => {
+            tokenClient.callback = (tokenResponse) => {
+                console.log("[handleAuthClick] tokenClient.callback received:", tokenResponse);
+                if (tokenResponse && tokenResponse.access_token) {
+                    gapi.client.setToken(tokenResponse);
+                    gisInited = true; // 認証が成功したらGIS初期化済みとする
+                    console.log("[handleAuthClick] Access token obtained successfully.");
+                    resolve(true); // 認証成功
+                } else {
+                    console.error("[handleAuthClick] Failed to get access token:", tokenResponse);
+                    alert("Google Driveへの接続に失敗しました。再度お試しください。");
+                    fileStatus.textContent = "Google Driveへの接続に失敗しました。";
+                    reject(false); // 認証失敗
+                }
+            };
+            tokenClient.requestAccessToken({prompt: 'consent'}); // prompt: 'consent' を追加し、常に同意を求める
+        });
+    } catch (error) {
+        console.error("[handleAuthClick] Authentication process error:", error);
         if (fileStatus) {
-            fileStatus.textContent = "Google Driveに接続済み。";
+            fileStatus.textContent = "Google Driveへの接続に失敗しました。";
         }
+        return false; // 認証失敗
     }
 }
 
 // Pickerインスタンスを構築する関数 (google.loadのcallbackとして呼び出される)
 function createPicker() {
     console.log("[createPicker] called."); 
+    // Pickerを生成する前に、認証が完了しているか再度確認
     if (!gapiInited || !gapi.client.getToken()) {
-        fileStatus.textContent = "Google Driveに接続していません。認証が必要です。";
-        console.warn("[createPicker] Cannot create picker: Not authenticated or GAPI not inited.");
+        fileStatus.textContent = "Pickerを開くにはGoogle Driveへの認証が必要です。";
+        console.warn("[createPicker] Cannot create picker: Not authenticated or GAPI client not initialized.");
+        alert("Pickerを開くにはGoogle Driveへの認証が必要です。");
+        // 認証を促す
+        handleAuthClick().then(success => {
+            if (success) {
+                console.log("[createPicker] Auth successful after prompt, attempting to create picker again.");
+                // 認証成功後、再度Picker作成を試みる（少し遅延させて安定させる）
+                setTimeout(createPicker, 500); 
+            }
+        });
         return;
     }
 
