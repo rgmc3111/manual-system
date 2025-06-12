@@ -122,10 +122,10 @@ main {
     list-style: none;
     padding: 0;
     margin: 20px auto;
-    max-width: 960px;
-    display: grid; /* FlexboxからGridに変更 */
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* 画面幅に合わせて調整 */
-    gap: 20px; /* アイテム間の余白 */
+    max-width: 800px; /* リストの最大幅を調整 */
+    /* display: grid; /* 横並びが不要なためコメントアウトまたは削除 */
+    /* grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); */
+    /* gap: 20px; */ /* 縦並びなのでギャップは不要 */
 }
 
 .manual-item {
@@ -133,12 +133,13 @@ main {
     border: 1px solid #ddd;
     border-radius: 8px;
     padding: 20px;
+    margin-bottom: 15px; /* 各マニュアルアイテムの下に余白を追加 */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    display: flex; /* アイテム内でのFlexboxを保持 */
-    flex-direction: column; /* タイトルと本文を縦に並べる */
-    justify-content: space-between; /* 内容を上下に振り分ける */
-    overflow: hidden; /* 内容がはみ出さないように */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
 }
 
 .manual-item:hover {
@@ -149,55 +150,72 @@ main {
 .manual-item h3 {
     margin-top: 0;
     color: #2c3e50;
-    font-size: 1.2em;
+    font-size: 1.4em; /* タイトルを少し大きく */
     margin-bottom: 10px;
 }
 
 .manual-item p {
     color: #555;
-    font-size: 0.9em;
-    line-height: 1.6;
-    flex-grow: 1; /* 本文が利用可能なスペースを埋めるように */
-    overflow: hidden; /* 長すぎる本文を隠す */
-    text-overflow: ellipsis; /* 省略記号を表示 */
+    font-size: 1em; /* 本文のフォントサイズを調整 */
+    line-height: 1.7;
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
     display: -webkit-box;
-    -webkit-line-clamp: 3; /* 3行で切り詰める */
+    -webkit-line-clamp: 4; /* 表示する行数を調整 (例: 4行) */
     -webkit-box-orient: vertical;
-    margin-bottom: 15px; /* ボタンとの間に余白 */
+    margin-bottom: 15px;
 }
 
 .manual-item .manual-actions {
     display: flex;
-    justify-content: flex-end; /* ボタンを右寄せに */
-    gap: 10px; /* ボタン間の余白 */
+    justify-content: flex-end;
+    gap: 10px;
     margin-top: 10px;
 }
 
+/* ボタンの共通スタイル */
 .manual-item .manual-actions button {
-    padding: 8px 15px;
+    padding: 10px 20px; /* パディングを増やして押しやすく */
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 0.85em;
-    transition: background-color 0.2s ease;
+    font-size: 0.9em; /* フォントサイズを調整 */
+    font-weight: bold; /* 少し太字に */
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
+/* 表示ボタンのスタイル (新設) */
+.manual-item .manual-actions button.view-button {
+    background-color: #28a745; /* 緑系 */
+    color: white;
+}
+
+.manual-item .manual-actions button.view-button:hover {
+    background-color: #218838;
+    transform: translateY(-1px);
+}
+
+/* 編集ボタンのスタイル */
 .manual-item .manual-actions button.edit-button {
-    background-color: #007bff;
+    background-color: #007bff; /* 青系 */
     color: white;
 }
 
 .manual-item .manual-actions button.edit-button:hover {
     background-color: #0056b3;
+    transform: translateY(-1px);
 }
 
+/* 削除ボタンのスタイル */
 .manual-item .manual-actions button.delete-button {
-    background-color: #dc3545;
+    background-color: #dc3545; /* 赤系 */
     color: white;
 }
 
 .manual-item .manual-actions button.delete-button:hover {
     background-color: #c82333;
+    transform: translateY(-1px);
 }
 /* 新規追加: ラダー表示のスタイル */
 #content-list .manual-ladder-display {
