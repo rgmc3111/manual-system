@@ -72,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await loadManualsFromDrive(fileId);
         } else if (data[google.picker.Response.ACTION] == google.picker.Action.CANCEL) {
             fileStatus.textContent = "ファイルの選択がキャンセルされました。";
+            alert("Google Driveからのマニュアル読み込みをキャンセルしました。"); // キャンセル時のアラート
         }
     }
 
@@ -107,8 +108,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 manuals = JSON.parse(response.body); // response.result ではなく response.body を使う
             } catch (parseError) {
                 console.error('Error parsing JSON from Drive:', parseError);
-                alert('Google Driveから読み込んだデータが不正な形式です。');
+                alert('Google Driveから読み込んだデータが不正な形式です。このファイルは利用できません。');
                 manuals = []; // 不正な場合はデータをクリア
+                // 不正なファイルを指定した場合は、currentManualsFileIdもクリアして再選択を促す
+                currentManualsFileId = null;
+                localStorage.removeItem('manualsFileId');
+                displayManuals(currentLadder, currentSearchTerm);
+                return;
             }
             
             // 読み込んだマニュアルにorderプロパティがない場合は初期値を設定
@@ -141,9 +147,9 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.removeItem('manualsFileId');
             displayManuals(currentLadder, currentSearchTerm);
             // エラー後に Picker を開くことを促す
-            if (gapi.client.getToken()) { // 認証済みの場合のみ
-                // createPicker(); // 自動でPickerを開くか、ユーザーに促すか、UXによる
-            }
+            // if (gapi.client.getToken()) { // 認証済みの場合のみ
+            //     createPicker(); // 自動でPickerを開くことは、ユーザーの意図に反する可能性もあるためコメントアウト
+            // }
         }
     }
 
@@ -238,8 +244,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filteredManuals.length === 0) {
             ul.innerHTML = '<p>表示するマニュアルがありません。</p>';
             // マニュアルがゼロの場合に、Google Driveからの読み込みを促すメッセージ
-            if (!currentManualsFileId && gapiInited && gisInited && gapi.client.getToken()) {
-                fileStatus.textContent = "マニュアルがありません。Google Driveから読み込むか、新規登録してください。";
+            if (gapiInited && gisInited && gapi.client.getToken()) {
+                if (currentManualsFileId) {
+                    fileStatus.textContent = `現在、ファイル (ID: ${currentManualsFileId}) が選択されていますが、マニュアルがありません。新規登録するか、このファイルが正しいか確認してください。`;
+                } else {
+                    fileStatus.textContent = "マニュアルがありません。Google Driveから読み込むか、新規登録してGoogle Driveに保存してください。";
+                }
             }
         } else {
             filteredManuals.forEach(manual => {
@@ -507,13 +517,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 初期表示
     displayManuals('all');
 
-    // ★重要: 認証が完了し、かつもしファイルIDがあれば自動読み込みを試みる (初回アクセス時など)
-    // このロジックは maybeEnableButtons の中に入れるのが最も安全
-    // しかし、DOMContentLoaded 内で直接呼び出したい場合、認証完了の保証が必要
-    // 今回は maybeEnableButtons で認証完了後に fileStatus のメッセージを更新するようにしているため、
-    // ユーザーに操作を促す形で十分とする。
-    // より自動化したい場合は、maybeEnableButtons 内で currentManualsFileId の有無を見て loadManualsFromDrive を呼ぶことを検討。
-
 }); // DOMContentLoaded の閉じタグ
 
 
@@ -547,9 +550,9 @@ function gisLoaded() {
                 if (fileStatus) { 
                     fileStatus.textContent = "Google Driveに接続済み。";
                     // 認証が完了し、ファイルIDがローカルストレージにあれば自動読み込みを試みる
+                    // ただし、この自動読み込みは maybeEnableButtons 内で一元的に行う
                     if (currentManualsFileId) {
-                         fileStatus.textContent += ` 以前のファイル (ID: ${currentManualsFileId}) を読み込み中...`;
-                         loadManualsFromDrive(currentManualsFileId);
+                         fileStatus.textContent += ` 以前のファイル (ID: ${currentManualsFileId}) が選択されています。`;
                     } else {
                          fileStatus.textContent += " マニュアルファイルを選択するか、新規に作成してください。";
                     }
@@ -566,7 +569,7 @@ function gisLoaded() {
     maybeEnableButtons();
 }
 
-// ボタンの有効化判定
+// ボタンの有効化判定と初期ファイル特定
 function maybeEnableButtons() {
     if (gapiInited && gisInited) {
         // DOM要素がロードされているか確認
@@ -574,12 +577,16 @@ function maybeEnableButtons() {
             loadFromDriveButton.disabled = false;
             saveToDriveButton.disabled = false;
             if (gapi.client.getToken()) {
-                fileStatus.textContent = "Google Driveに接続済み。";
                 if (currentManualsFileId) {
-                    fileStatus.textContent += ` 以前のファイル (ID: ${currentManualsFileId}) を読み込み中...`;
-                    loadManualsFromDrive(currentManualsFileId); // 自動読み込みを試みる
+                    fileStatus.textContent = `Google Driveに接続済み。以前のファイル (ID: ${currentManualsFileId}) を読み込み中...`;
+                    // ローカルストレージにファイルIDがあれば、自動でそのファイルを読み込もうとする
+                    loadManualsFromDrive(currentManualsFileId); 
                 } else {
-                    fileStatus.textContent += " マニュアルファイルを選択するか、新規に作成してください。";
+                    fileStatus.textContent = "Google Driveに接続済み。マニュアルファイルを選択するか、新規に作成してください。";
+                    // 初回アクセスやファイルクリア後など、ファイルが特定されていない場合はPickerを自動的に開く
+                    // ただし、アラート後が良いので、ユーザー操作を待つか、pickerCallbackが閉じられた後に実行する
+                    // alert("Google Driveからマニュアルファイルを読み込むか、新規に作成してください。");
+                    // createPicker(); // 自動でPickerを開くよりも、ユーザーのクリックを待つ方がUXが良い場合が多い
                 }
             } else {
                 fileStatus.textContent = "Google Driveに接続していません。ボタンをクリックして接続してください。";    
@@ -619,7 +626,10 @@ function createPicker() {
     }
 
     const view = new google.picker.View(google.picker.ViewId.DOCS);
-    view.setMimeTypes('application/json'); 
+    view.setMimeTypes('application/json'); // JSONファイルのみを表示
+
+    // ファイル名で絞り込みたい場合 (オプション)
+    // view.setQuery('manual_data.json'); // これを有効にすると、ユーザーは manual_data.json のみを検索できる
 
     const picker = new google.picker.PickerBuilder()
         .setAppId(CLIENT_ID.split('.')[0])    
