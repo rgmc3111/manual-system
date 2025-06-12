@@ -117,7 +117,88 @@ main {
     margin-bottom: 5px;
     color: #333333;
 }
+/* マニュアル一覧のスタイル */
+#manual-list {
+    list-style: none;
+    padding: 0;
+    margin: 20px auto;
+    max-width: 960px;
+    display: grid; /* FlexboxからGridに変更 */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* 画面幅に合わせて調整 */
+    gap: 20px; /* アイテム間の余白 */
+}
 
+.manual-item {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex; /* アイテム内でのFlexboxを保持 */
+    flex-direction: column; /* タイトルと本文を縦に並べる */
+    justify-content: space-between; /* 内容を上下に振り分ける */
+    overflow: hidden; /* 内容がはみ出さないように */
+}
+
+.manual-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.manual-item h3 {
+    margin-top: 0;
+    color: #2c3e50;
+    font-size: 1.2em;
+    margin-bottom: 10px;
+}
+
+.manual-item p {
+    color: #555;
+    font-size: 0.9em;
+    line-height: 1.6;
+    flex-grow: 1; /* 本文が利用可能なスペースを埋めるように */
+    overflow: hidden; /* 長すぎる本文を隠す */
+    text-overflow: ellipsis; /* 省略記号を表示 */
+    display: -webkit-box;
+    -webkit-line-clamp: 3; /* 3行で切り詰める */
+    -webkit-box-orient: vertical;
+    margin-bottom: 15px; /* ボタンとの間に余白 */
+}
+
+.manual-item .manual-actions {
+    display: flex;
+    justify-content: flex-end; /* ボタンを右寄せに */
+    gap: 10px; /* ボタン間の余白 */
+    margin-top: 10px;
+}
+
+.manual-item .manual-actions button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background-color 0.2s ease;
+}
+
+.manual-item .manual-actions button.edit-button {
+    background-color: #007bff;
+    color: white;
+}
+
+.manual-item .manual-actions button.edit-button:hover {
+    background-color: #0056b3;
+}
+
+.manual-item .manual-actions button.delete-button {
+    background-color: #dc3545;
+    color: white;
+}
+
+.manual-item .manual-actions button.delete-button:hover {
+    background-color: #c82333;
+}
 /* 新規追加: ラダー表示のスタイル */
 #content-list .manual-ladder-display {
     font-size: 0.75em; /* 小さめのフォントサイズ */
