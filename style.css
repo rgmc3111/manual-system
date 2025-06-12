@@ -51,271 +51,114 @@ main {
     max-width: 960px;
     margin: 20px auto;
     padding: 20px;
-    background-color: #f8f9fa; /* メインコンテンツの背景色 */
-    border-radius: 8px;
+    background-color: #ffffff;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
 }
 
 #search-area {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
+    text-align: center;
     margin-bottom: 20px;
-    padding: 15px;
-    background-color: #e9ecef;
-    border-radius: 8px;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 #search-input {
-    flex-grow: 1;
     padding: 10px;
     border: 1px solid #ced4da;
-    border-radius: 5px;
-    font-size: 1em;
+    border-radius: 4px;
+    width: 60%;
+    max-width: 400px;
+    margin-right: 10px;
 }
 
-/* Google Driveボタンのスタイル */
-#load-from-drive-button,
-#save-to-drive-button {
-    background-color: #0d6efd; /* 青系 */
-    color: white;
-    border: none;
-    border-radius: 5px;
-    padding: 10px 15px;
-    cursor: pointer;
-    font-size: 0.9em;
-    transition: background-color 0.3s ease;
-}
-
-#load-from-drive-button:hover,
-#save-to-drive-button:hover {
-    background-color: #0a58ca;
-}
-
-#load-from-drive-button:disabled,
-#save-to-drive-button:disabled {
-    background-color: #a0a0a0;
-    cursor: not-allowed;
-}
-
-#file-status {
-    text-align: center;
-    margin-top: 10px;
-    font-size: 0.9em;
-    color: #666;
-}
-
-
-/* マニュアル詳細表示エリアのスタイル */
-#manual-detail {
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 25px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
-}
-
-#manual-detail h2 {
-    color: #2c3e50;
-    font-size: 1.8em;
-    margin-bottom: 15px;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 10px;
-}
-
-#manual-detail p {
-    color: #333;
-    line-height: 1.8;
-    margin-bottom: 1em;
-    white-space: pre-wrap; /* 改行を保持 */
-}
-
-#manual-detail .detail-ladder {
-    font-weight: bold;
-    color: #007bff;
-    margin-bottom: 15px;
-    display: block;
-}
-
-#manual-detail .detail-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-/* マニュアル詳細ボタンのスタイル（詳細画面用） */
-#manual-detail .detail-actions button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1em;
-    font-weight: bold;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-}
-
-#manual-detail .detail-actions button#edit-detail-button {
-    background-color: #007bff; /* 青系 */
-    color: white;
-}
-
-#manual-detail .detail-actions button#edit-detail-button:hover {
-    background-color: #0056b3;
-    transform: translateY(-1px);
-}
-
-#manual-detail .detail-actions button#delete-detail-button {
-    background-color: #dc3545; /* 赤系 */
-    color: white;
-}
-
-#manual-detail .detail-actions button#delete-detail-button:hover {
-    background-color: #c82333;
-    transform: translateY(-1px);
-}
-
-#manual-detail .detail-actions button#back-to-list-button {
-    background-color: #6c757d; /* グレー系 */
-    color: white;
-}
-
-#manual-detail .detail-actions button#back-to-list-button:hover {
-    background-color: #5a6268;
-    transform: translateY(-1px);
-}
-
-
-/* マニュアル一覧のスタイル */
 #manual-list {
-    list-style: none;
-    padding: 0;
-    margin: 20px auto;
-    max-width: 800px; /* リストの最大幅を調整 */
-    /* display: grid; /* 横並びが不要なためコメントアウトまたは削除 */
-    /* grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); */
-    /* gap: 20px; */ /* 縦並びなのでギャップは不要 */
+    display: flex;
+    flex-direction: column; /* リストを縦並びにする */
+    gap: 15px; /* 各マニュアルアイテム間のスペース */
 }
 
 .manual-item {
-    background-color: #ffffff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 15px; /* 各マニュアルアイテムの下に余白を追加 */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background-color: #e9ecef;
+    padding: 15px;
+    border-radius: 5px;
     display: flex;
-    flex-direction: column;
     justify-content: space-between;
-    overflow: hidden;
-}
-
-.manual-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .manual-item h3 {
-    margin-top: 0;
-    color: #2c3e50;
-    font-size: 1.4em; /* タイトルを少し大きく */
-    margin-bottom: 10px;
+    margin: 0;
+    color: #343a40;
 }
 
-.manual-item p {
-    color: #555;
-    font-size: 1em; /* 本文のフォントサイズを調整 */
-    line-height: 1.7;
-    flex-grow: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 4; /* 表示する行数を調整 (例: 4行) */
-    -webkit-box-orient: vertical;
-    margin-bottom: 15px;
-}
-
-.manual-item .manual-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-/* ★★★ここからボタンのスタイルを修正・追加します★★★ */
-
-/* ボタンの共通スタイル */
-.manual-item .manual-actions button {
-    padding: 10px 20px; /* パディングを増やして押しやすく */
+.manual-item .actions button {
+    padding: 8px 12px;
     border: none;
-    border-radius: 5px;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 0.9em; /* フォントサイズを調整 */
-    font-weight: bold; /* 少し太字に */
-    transition: background-color 0.2s ease, transform 0.1s ease; /* ホバー効果のためのトランジション */
+    font-weight: bold;
+    margin-left: 8px; /* ボタン間のスペース */
+    transition: background-color 0.2s ease;
 }
 
-/* 表示ボタンのスタイル */
-.manual-item .manual-actions button.view-button {
-    background-color: #28a745; /* 緑系 */
-    color: white;
-}
-.manual-item .manual-actions button.view-button:hover {
-    background-color: #218838;
-    transform: translateY(-1px);
-}
-
-/* 編集ボタンのスタイル */
-.manual-item .manual-actions button.edit-button {
+/* ★ボタンの色合い・デザインの変更★ */
+.manual-item .actions .view-button {
     background-color: #007bff; /* 青系 */
     color: white;
 }
-.manual-item .manual-actions button.edit-button:hover {
+
+.manual-item .actions .view-button:hover {
     background-color: #0056b3;
-    transform: translateY(-1px);
 }
 
-/* 削除ボタンのスタイル */
-.manual-item .manual-actions button.delete-button {
+.manual-item .actions .edit-button {
+    background-color: #28a745; /* 緑系 */
+    color: white;
+}
+
+.manual-item .actions .edit-button:hover {
+    background-color: #218838;
+}
+
+.manual-item .actions .delete-button {
     background-color: #dc3545; /* 赤系 */
     color: white;
 }
-.manual-item .manual-actions button.delete-button:hover {
+
+.manual-item .actions .delete-button:hover {
     background-color: #c82333;
-    transform: translateY(-1px);
 }
 
-/* ★★★ ここまでがボタンのスタイル修正・追加です ★★★ */
 
-
-/* マニュアル登録/編集フォームのスタイル */
 #manual-form-section {
     padding: 20px;
-    background-color: #ffffff;
+    background-color: #f8f9fa;
     border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+#manual-form-section h2 {
+    text-align: center;
+    color: #343a40;
+    margin-bottom: 20px;
 }
 
 #manual-form label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
     font-weight: bold;
-    color: #333;
+    color: #495057;
 }
 
 #manual-form input[type="text"],
 #manual-form textarea,
 #manual-form select {
-    width: calc(100% - 22px); /* 枠線とパディングを考慮 */
+    width: calc(100% - 22px); /* Padding and border */
     padding: 10px;
     margin-bottom: 15px;
     border: 1px solid #ced4da;
-    border-radius: 5px;
-    font-size: 1em;
+    border-radius: 4px;
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
 }
 
 #manual-form textarea {
@@ -327,19 +170,18 @@ main {
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 1em;
     font-weight: bold;
     transition: background-color 0.3s ease;
-    margin-right: 10px; /* ボタン間の余白 */
+    margin-right: 10px;
 }
 
 #save-manual-button {
-    background-color: #28a745; /* 保存ボタンは緑系 */
+    background-color: #007bff;
     color: white;
 }
 
 #save-manual-button:hover {
-    background-color: #218838;
+    background-color: #0056b3;
 }
 
 #cancel-form-button {
@@ -392,30 +234,68 @@ footer p {
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 1em;
+    font-weight: bold;
     transition: background-color 0.3s ease;
 }
 
-#google-drive-actions button#load-from-drive-button {
+#load-from-drive-button {
     background-color: #17a2b8; /* インフォメーションカラー */
     color: white;
 }
 
-#google-drive-actions button#load-from-drive-button:hover {
+#load-from-drive-button:hover {
     background-color: #138496;
 }
 
-#google-drive-actions button#save-to-drive-button {
-    background-color: #007bff; /* プライマリカラー */
+#save-to-drive-button {
+    background-color: #6f42c1; /* 紫系 */
     color: white;
 }
 
-#google-drive-actions button#save-to-drive-button:hover {
-    background-color: #0056b3;
+#save-to-drive-button:hover {
+    background-color: #563d7c;
 }
 
-#google-drive-actions #file-status {
-    margin-top: 10px;
+#file-status {
+    margin-left: 15px;
     font-size: 0.9em;
-    color: #495057;
+    color: #6c757d;
+}
+
+/* 詳細表示画面のボタン */
+.detail-actions button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+    margin-right: 10px;
+}
+
+#back-to-list-button {
+    background-color: #6c757d; /* グレー */
+    color: white;
+}
+
+#back-to-list-button:hover {
+    background-color: #5a6268;
+}
+
+#edit-detail-button {
+    background-color: #ffc107; /* 黄色系 */
+    color: #333;
+}
+
+#edit-detail-button:hover {
+    background-color: #e0a800;
+}
+
+#delete-detail-button {
+    background-color: #dc3545; /* 赤系 */
+    color: white;
+}
+
+#delete-detail-button:hover {
+    background-color: #c82333;
 }
