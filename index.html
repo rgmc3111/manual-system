@@ -26,25 +26,28 @@
         <input type="text" id="search-input" placeholder="キーワードで検索...">
         <button id="load-from-drive-button" disabled>マニュアルを読み込む (Drive)</button>
         <button id="save-to-drive-button" disabled>マニュアルを保存 (Drive)</button>
-        <div id="file-status">Google Driveに接続していません。</div>
+        <p id="file-status">Google Driveに接続中...</p>
     </div>
 
     <main>
-        <div id="main-content">
-            <div id="content-list">
+        <div id="manual-list-container">
+            <h2 id="current-ladder-title">すべてのマニュアル</h2>
+            <div id="manual-list">
                 </div>
-            <div id="content-detail" class="hidden">
-                <h2 id="detail-title"></h2>
-                <p id="detail-body"></p>
-                <div class="detail-actions">
-                    <button id="edit-button">編集</button>
-                    <button id="delete-button">削除</button>
-                </div>
+        </div>
+
+        <div id="manual-detail-container" class="hidden">
+            <h2 id="detail-manual-title"></h2>
+            <div id="detail-manual-body"></div>
+            <p>ラダー分類: <span id="detail-manual-ladder"></span></p>
+            <div class="detail-actions">
+                <button id="edit-manual-button">編集</button>
+                <button id="delete-manual-button">削除</button>
                 <button id="back-to-list-button">一覧に戻る</button>
             </div>
         </div>
 
-        <div id="manual-form-area" class="hidden">
+        <div id="manual-form-container" class="hidden">
             <h2><span id="form-title">新規登録</span></h2>
             <form id="manual-form">
                 <input type="hidden" id="manual-id">
@@ -70,12 +73,14 @@
         </div>
     </main>
 
-    <hr> <footer>
+    <hr>
+    <footer>
         <p>&copy; 2025 Perfusion manual RGMC.</p>
-        </footer>
+    </footer>
 
-   <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
     <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script src="script.js"></script>
 </body>
 </html>
