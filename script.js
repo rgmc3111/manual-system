@@ -296,7 +296,6 @@ async function saveManualsToDrive() {
         // ★★★ 保存に成功したファイルのIDをローカルストレージに保存する ★★★
         localStorage.setItem('lastUsedManualFileId', response.result.id);
         lastUsedFileId = response.result.id; // グローバル変数も更新
-
     } catch (err) {
         console.error('Google Driveへのファイルの保存中にエラーが発生しました:', err);
         alert('Google Driveへのファイルの保存に失敗しました。');
@@ -503,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput.addEventListener('input', renderManuals);
 
     // 各ボタンのイベントリスナー
-    document.getElementById('add-manual-button').addEventListener('click', addManual);
+    document.getElementById('new-manual-button').addEventListener('click', addManual);
     manualForm.addEventListener('submit', saveManual); // フォーム送信で保存
     document.getElementById('cancel-form-button').addEventListener('click', cancelForm);
 
