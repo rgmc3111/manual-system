@@ -25,29 +25,26 @@
     <div id="search-area">
         <input type="text" id="search-input" placeholder="キーワードで検索...">
         <button id="load-from-drive-button" disabled>マニュアルを読み込む (Drive)</button>
-        <button id="save-to-drive-button" disabled>マニュアルを保存する (Drive)</button>
-        <p id="file-status">Google Driveファイルは選択されていません。</p>
+        <button id="save-to-drive-button" disabled>マニュアルを保存 (Drive)</button>
+        <div id="file-status">Google Driveに接続していません。</div>
     </div>
 
     <main>
-        <section id="manual-list-section">
-            <h2>マニュアル一覧</h2>
-            <ul id="manual-list">
-                </ul>
-        </section>
-
-        <section id="manual-detail-section" class="hidden">
-            <h2 id="manual-detail-title"></h2>
-            <p id="manual-detail-body"></p>
-            <p id="manual-detail-ladder"></p>
-            <div class="detail-actions">
-                <button id="edit-detail-button"><i class="fas fa-edit"></i> 編集</button>
-                <button id="delete-detail-button"><i class="fas fa-trash-alt"></i> 削除</button>
-                <button id="back-to-list-button"><i class="fas fa-arrow-alt-circle-left"></i> 一覧に戻る</button>
+        <div id="main-content">
+            <div id="content-list">
+                </div>
+            <div id="content-detail" class="hidden">
+                <h2 id="detail-title"></h2>
+                <p id="detail-body"></p>
+                <div class="detail-actions">
+                    <button id="edit-button">編集</button>
+                    <button id="delete-button">削除</button>
+                </div>
+                <button id="back-to-list-button">一覧に戻る</button>
             </div>
-        </section>
+        </div>
 
-        <div id="manual-form-section" class="hidden">
+        <div id="manual-form-area" class="hidden">
             <h2><span id="form-title">新規登録</span></h2>
             <form id="manual-form">
                 <input type="hidden" id="manual-id">
@@ -73,13 +70,12 @@
         </div>
     </main>
 
-    <hr>
-    <footer>
+    <hr> <footer>
         <p>&copy; 2025 Perfusion manual RGMC.</p>
-    </footer>
+        </footer>
 
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-    <script src="script.js"></script>
+    <script src="https://www.google.com/jsapi"></script> <script src="script.js"></script>
 </body>
 </html>
