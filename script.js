@@ -99,7 +99,7 @@ async function findOrCreateDriveFile() {
         // 1. ファイルを名前で検索
         const response = await gapi.client.drive.files.list({
             q: `name='${DRIVE_DATA_FILENAME}' and trashed=false`,
-            driveFileId = response.result.files[0].id;
+            driveFileId = response.result.files[0].id'
             console.log(`Found file: ${response.result.files[0].name}, ID: ${driveFileId}`);
             // 必要であれば、ここでファイルステータスを更新
             document.getElementById('file-status').textContent = `Driveファイル確認済み: ${DRIVE_DATA_FILENAME}`;
